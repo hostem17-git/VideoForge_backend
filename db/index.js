@@ -6,6 +6,10 @@ mongoose.connect(process.env.MONGODB_URL_DEV);
 // Admin Schemna 
 const AdminSchema = new mongoose.Schema({
     username: String,
+    email: {
+        type: String,
+        unique: true,
+    },
     encryptedPassword: String,
     DateCreated: {
         type: Date,
@@ -16,23 +20,38 @@ const AdminSchema = new mongoose.Schema({
 // InfluencerSchema
 const InfluencerSchema = new mongoose.Schema({
     username: String,
-    email: String,
+    email: {
+        type: String,
+        unique: true,
+    },
     encryptedPassword: String,
     createdJobs: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Job'
-    }]
+    }],
+    Youtube: String,
+    X: String,
+    Instagram: String,
+    Facebook: String
 })
 
 // userSchame
 const UserSchema = new mongoose.Schema({
     username: String,
-    email: String,
+    email: {
+        type: String,
+        unique: true,
+    },
     encryptedPassword: String,
     JobsTaken: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Job'
-    }]
+    }],
+    Youtube: String,
+    X: String,
+    Instagram: String,
+    Facebook: String,
+    Portfolio:String
 })
 
 const JobSchema = new mongoose.Schema({
