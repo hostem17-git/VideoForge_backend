@@ -65,7 +65,7 @@ router.post("/SignIn", async (req, res) => {
         const token = jwt.sign({
             email: email,
             role: "admin"
-        })
+        },process.env.JWT_SECRET)
 
         res.status(200).json({
             token: token
