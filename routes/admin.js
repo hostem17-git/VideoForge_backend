@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const adminMiddleware = require('../middleware/admin');
-const { Admin } = require('../db/index');
+const { Admin, User, Influencer } = require('../db/index');
 const jwt = require("jsonwebtoken");
 const zod = require("zod");
 const bcrypt = require("bcrypt");
@@ -85,10 +85,152 @@ router.post("/SignIn", async (req, res) => {
 
 });
 
+
+// To get specific user
+router.get("/user/:userId", adminMiddleware, async (req, res) => {
+    try {
+        const userID = req.params.userId;
+        if (!userID) {
+            return res.status(400).json({ error: "User id not provided" })
+        }
+        const data = await User.findOne({ customId: userID }).select('-encryptedPassword ');
+
+        if (data) {
+            return res.status(200).json({
+                data: data
+            })
+        }
+        else {
+            return res.status(404).json({
+                message: "User not found"
+            })
+        }
+    }
+    catch (error) {
+        console.log("Admin get user error", error)
+        res.status(500).json({ error: "Unable to fetch user" });
+    }
+});
+
+//  Get all users
 router.get("/users", adminMiddleware, async (req, res) => {
-    console.log("in get user");
-    res.status(200).json({ message: "ok" });
+
+    try {
+        const data = await User.find({}).select('-encryptedPassword ');
+        if (data.length > 0) {
+            return res.status(200).json({
+                data: data
+            })
+        }
+        else {
+            return res.status(404).json({
+                message: "No users found"
+            })
+        }
+    }
+    catch (error) {
+        console.log("Admin get users error", error)
+        res.status(500).json({ error: "Unable to fetch users" });
+    }
 
 });
+
+// To get specific influencer
+router.get("/influencer/:influencerId", adminMiddleware, async (req, res) => {
+    try {
+        const influencerId = req.params.influencerId;
+        if (!influencerId) {
+            return res.status(400).json({ error: "Influencer id not provided" })
+        }
+        const data = await Influencer.findOne({ customId: influencerId }).select('-encryptedPassword ');
+
+        if (data) {
+            return res.status(200).json({
+                data: data
+            })
+        }
+        else {
+            return res.status(404).json({
+                message: "Influencer not found"
+            })
+        }
+    }
+    catch (error) {
+        console.log("Admin get influencer error", error)
+        res.status(500).json({ error: "Unable to fetch influencer" });
+    }
+});
+
+//  Get all influencers
+router.get("/influencers", adminMiddleware, async (req, res) => {
+    try {
+        const data = await Influencer.find({}).select('-encryptedPassword ');
+
+        if (data.length > 0) {
+            return res.status(200).json({
+                data: data
+            })
+        }
+        else {
+            return res.status(404).json({
+                message: "No influencers found"
+            })
+        }
+    }
+    catch (error) {
+        console.log("Admin get influencor error", error)
+        res.status(500).json({ error: "Unable to fetch influencers" });
+    }
+})
+
+// To get specific admin
+router.get("/admin/:adminId", adminMiddleware, async (req, res) => {
+    try {
+        const adminId = req.params.adminId;
+        if (!adminId) {
+            return res.status(400).json({ error: "Admin id not provided" })
+        }
+        const data = await Admin.findOne({ customId: adminId }).select('-encryptedPassword ');
+
+        if (data) {
+            return res.status(200).json({
+                data: data
+            })
+        }
+        else {
+            return res.status(404).json({
+                message: "Admin not found"
+            })
+        }
+    }
+    catch (error) {
+        console.log("Admin get admin error", error)
+        res.status(500).json({ error: "Unable to fetch influencer" });
+    }
+});
+
+//  Get all admins
+router.get("/admins", adminMiddleware, async (req, res) => {
+    try {
+        const data = await Admin.find({}).select('-encryptedPassword ');
+
+        if (data.length > 0) {
+            return res.status(200).json({
+                data: data
+            })
+        }
+        else {
+            return res.status(404).json({
+                message: "No Admins found"
+            })
+        }
+    }
+    catch (error) {
+        console.log("Admin get admins error", error)
+        res.status(500).json({ error: "Unable to fetch admins" });
+    }
+})
+
+
 
 module.exports = router;

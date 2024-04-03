@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-
+const { v4: uuidv4 } = require('uuid');
 // Create and export db schemas
 mongoose.connect(process.env.MONGODB_URL_DEV);
 
@@ -14,7 +14,12 @@ const AdminSchema = new mongoose.Schema({
     DateCreated: {
         type: Date,
         default: () => Date.now()
-    }
+    },
+    customId: {
+        type: String,
+        default: uuidv4,
+        unique: true
+    },
 })
 
 // InfluencerSchema
@@ -29,6 +34,11 @@ const InfluencerSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Job'
     }],
+    customId: {
+        type: String,
+        default: uuidv4,
+        unique: true
+    },
     Youtube: String,
     X: String,
     Instagram: String,
@@ -47,6 +57,11 @@ const UserSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Job'
     }],
+    customId: {
+        type: String,
+        default: uuidv4,
+        unique: true
+    },
     Youtube: String,
     X: String,
     Instagram: String,
@@ -76,7 +91,12 @@ const JobSchema = new mongoose.Schema({
     Stage: {
         type: String,
         enum: ["new", "started", "closed"]
-    }
+    },
+    customId: {
+        type: String,
+        default: uuidv4,
+        unique: true
+    },
 })
 
 const Admin = mongoose.model('Admin', AdminSchema);
