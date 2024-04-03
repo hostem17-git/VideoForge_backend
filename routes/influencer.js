@@ -65,7 +65,9 @@ router.post("/SignIn", async (req, res) => {
         const token = jwt.sign({
             email: email,
             role: "influencer"
-        }, process.env.JWT_SECRET)
+        }, process.env.JWT_SECRET,
+            { expiresIn: JWT_LIFE }
+        )
 
         res.status(200).json({
             token: token

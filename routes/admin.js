@@ -4,6 +4,7 @@ const { Admin } = require('../db/index');
 const jwt = require("jsonwebtoken");
 const zod = require("zod");
 const bcrypt = require("bcrypt");
+const { JWT_LIFE } = require('../config')
 
 const router = Router();
 const emailSchema = zod.string().email();
@@ -64,8 +65,11 @@ router.post("/SignIn", async (req, res) => {
 
         const token = jwt.sign({
             email: email,
-            role: "admin"
-        },process.env.JWT_SECRET)
+            role: "admin",
+        },
+            process.env.JWT_SECRET,
+            { expiresIn: JWT_LIFE }
+        )
 
         res.status(200).json({
             token: token
@@ -79,6 +83,12 @@ router.post("/SignIn", async (req, res) => {
 
 
 
-})
+});
+
+router.get("/users", adminMiddleware, async (req, res) => {
+    console.log("in get user");
+    res.status(200).json({ message: "ok" });
+
+});
 
 module.exports = router;
