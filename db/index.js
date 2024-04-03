@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { v4: uuidv4 } = require('uuid');
+const { boolean } = require("zod");
 // Create and export db schemas
 mongoose.connect(process.env.MONGODB_URL_DEV);
 
@@ -20,6 +21,12 @@ const AdminSchema = new mongoose.Schema({
         default: uuidv4,
         unique: true
     },
+    suspended: {
+        type: Boolean,
+        default: false
+    },
+    suspendedOn: Date,
+    SuspensionReason: String
 })
 
 // InfluencerSchema
@@ -42,7 +49,13 @@ const InfluencerSchema = new mongoose.Schema({
     Youtube: String,
     X: String,
     Instagram: String,
-    Facebook: String
+    Facebook: String,
+    suspended: {
+        type: Boolean,
+        default: false
+    },
+    suspendedOn: Date,
+    SuspensionReason: String
 })
 
 // userSchame
@@ -66,7 +79,13 @@ const UserSchema = new mongoose.Schema({
     X: String,
     Instagram: String,
     Facebook: String,
-    Portfolio: String
+    Portfolio: String,
+    suspended: {
+        type: Boolean,
+        default: false
+    },
+    suspendedOn: Date,
+    SuspensionReason: String
 })
 
 const JobSchema = new mongoose.Schema({
@@ -97,6 +116,12 @@ const JobSchema = new mongoose.Schema({
         default: uuidv4,
         unique: true
     },
+    suspended: {
+        type: Boolean,
+        default: false
+    },
+    suspendedOn: Date,
+    SuspensionReason: String
 })
 
 const Admin = mongoose.model('Admin', AdminSchema);

@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const adminMiddleware = require('../middleware/admin');
-const { Admin, User, Influencer } = require('../db/index');
+const { Admin, User, Influencer, Job } = require('../db/index');
 const jwt = require("jsonwebtoken");
 const zod = require("zod");
 const bcrypt = require("bcrypt");
@@ -84,7 +84,6 @@ router.post("/SignIn", async (req, res) => {
 
 
 });
-
 
 // To get specific user
 router.get("/user/:userId", adminMiddleware, async (req, res) => {
@@ -231,6 +230,124 @@ router.get("/admins", adminMiddleware, async (req, res) => {
     }
 })
 
+// TODO: Test suspend all scenarios
+// Suspend entity
+router.put("/suspend/:type", adminMiddleware, async (req, res) => {
+    try {
+        const type = req.params.type;
 
+        if (!(type === "user" || type === "influencer" || type === "job" || type === "admin")) {
+            return res.status(400).json({ message: "incorret path" })
+        }
+
+        const { userId, reason } = req.body;
+        if (!userId || !reason) {
+            return res.status(400).json({ error: "Invalid input" })
+        }
+        let Model;
+        switch (type) {
+            case "user":
+                Model = User;
+                break;
+            case "influencer":
+                Model = Influencer;
+                break;
+            case "job":
+                Model = Job;
+                break;
+            case "admin":
+                Model = Admin;
+                break;
+            default:
+                break;
+        }
+
+        const entity = await Model.findOne({ customId: userId }).select('-encryptedPassword ');
+
+        if (!entity) {
+            return res.status(404).json({
+                message: `${type} not found`
+            })
+        }
+
+        if (entity.suspended) {
+            return res.status(200).json({ message: `${type} already suspended` })
+        }
+
+        entity.suspended = true;
+        entity.suspendedOn = new Date();
+        entity.SuspensionReason = reason;
+
+        await entity.save();
+
+        return res.status(200).json({
+            message: `${type} suspended`
+        });
+
+    }
+    catch (error) {
+        console.log(`Admin suspend ${type} error`, error)
+        res.status(500).json({ error: `Unable to suspend ${type}` });
+    }
+});
+
+// TODO: Test reinstate all scenarios
+// reinstate entity
+router.put("/reinstate/:type", adminMiddleware, async (req, res) => {
+    try {
+        const type = req.params.type;
+
+        if (!(type === "user" || type === "influencer" || type === "job" || type === "admin")) {
+            return res.status(400).json({ message: "incorret path" })
+        }
+
+        const { userId } = req.body;
+        if (!userId) {
+            return res.status(400).json({ error: "Invalid input" })
+        }
+        let Model;
+        switch (type) {
+            case "user":
+                Model = User;
+                break;
+            case "influencer":
+                Model = Influencer;
+                break;
+            case "job":
+                Model = Job;
+                break;
+            case "admin":
+                Model = Admin;
+                break;
+            default:
+                break;
+        }
+
+        const entity = await Model.findOne({ customId: userId }).select('-encryptedPassword ');
+
+        if (!entity) {
+            return res.status(404).json({
+                message: `${type} not found`
+            })
+        }
+
+        if (!entity.suspended) {
+            return res.status(400).json({ message: `${type} not suspended,cannot reinstate` })
+        }
+
+        entity.suspended = false;
+
+        await entity.save();
+
+        return res.status(200).json({
+            message: `${type} reinstated`
+        });
+
+    }
+    catch (error) {
+        console.log(`Admin reinstate ${type} error`, error)
+        res.status(500).json({ error: `Unable to reinstate ${type}` });
+    }
+});
 
 module.exports = router;
