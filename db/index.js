@@ -1,4 +1,4 @@
-const { default: mongoose, Mongoose } = require("mongoose");
+const { mongoose } = require("mongoose");
 
 // Create and export db schemas
 mongoose.connect(process.env.MONGODB_URL_DEV);
@@ -51,7 +51,7 @@ const UserSchema = new mongoose.Schema({
     X: String,
     Instagram: String,
     Facebook: String,
-    Portfolio:String
+    Portfolio: String
 })
 
 const JobSchema = new mongoose.Schema({
@@ -85,5 +85,8 @@ const User = mongoose.model('User', UserSchema);
 const Job = mongoose.model('Job', JobSchema);
 
 module.exports = {
-    Admin, Influencer, User, Job
+    Admin,
+    Influencer,
+    User,
+    Job
 }
