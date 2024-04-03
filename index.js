@@ -9,8 +9,8 @@ const influencerRouter = require("./routes/influencer");
 const app = express()
 app.use(bodyParser.json());
 app.use("/admin", adminRouter);
-// app.use("/user", userRouter);
-// app.use("/influencer", influencerRouter);
+app.use("/user", userRouter);
+app.use("/influencer", influencerRouter);
 
 
 const PORT = process.env.PORT;
