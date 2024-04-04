@@ -121,7 +121,8 @@ const JobSchema = new mongoose.Schema({
         default: false
     },
     suspendedOn: Date,
-    SuspensionReason: String
+    SuspensionReason: String,
+    tags:[String]
 })
 
 const Admin = mongoose.model('Admin', AdminSchema);

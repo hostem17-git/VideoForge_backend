@@ -13,7 +13,6 @@ function verifyEmail(email) {
     return response.success;
 }
 
-
 router.post("/Signup", async (req, res) => {
     const { username, email, password } = req.body;
 
