@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const influencerMiddleware = require('../middleware/influencer');
-const { Influencer, Job } = require('../db/index');
+const { Influencer, Job, User } = require('../db/index');
 const jwt = require("jsonwebtoken");
 const zod = require("zod");
 const bcrypt = require("bcrypt");
@@ -27,9 +27,6 @@ function verifyEmail(email) {
     return response.success;
 }
 
-function validateJob(job) {
-    return jobSchema.safeParse(job).success
-}
 
 router.post("/Signup", async (req, res) => {
     const { username, email, password } = req.body;
@@ -68,7 +65,6 @@ router.post("/SignIn", async (req, res) => {
 
     if (!email || !password)
         return res.status(400).json({ error: "missing inputs" });
-
 
     try {
         const influencer = await Influencer.findOne({
@@ -110,6 +106,8 @@ router.post("/SignIn", async (req, res) => {
 
 })
 
+
+// FIXME: make sure influencer is not suspended
 router.post("/createjob", influencerMiddleware, async (req, res) => {
     try {
         const { jobTitle, jobDescription, startDate, dueDate, tags } = req.body;
@@ -157,5 +155,52 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
     }
 });
 
+// FIXME: make sure influencer is not suspended
+// for influencers to hire freelancers
+router.post("/hireUser", influencerMiddleware, async (req, res) => {
+    try {
+        const { jobId, userId } = req.body;
+
+        if (!jobId || !userId) {
+            return res.status(400).json({ error: "Invalid inputs" });
+        }
+
+        const job = await Job.findOne({ customId: jobId });
+
+        if (!job) {
+            return res.status(400).json({ error: "Invalid job ID" });
+        }
+
+        if (job.Stage !== "new") {
+            return res.status(400).json({ error: `Cannot hire on job which is already ${job.Stage}` })
+        }
+
+        if (job.suspended) {
+            return res.status(400).json({ error: "Job not available" })
+        }
+
+
+        const user = await User.findOne({ customId: userId });
+
+        if (!user) {
+            return res.status(400).json({ error: "Invalid user Id" })
+        }
+
+        if (user.suspended) {
+            return res.status(400).json({ error: "Cannot hire a suspended user" })
+        }
+
+        job.users.push(user);
+        user.JobsTaken.push(job);
+
+        job.save();
+        user.save();
+
+        job.save();
+    } catch (error) {
+        console.log("Hire user error", error);
+        res.status(500).json({ error: "Error hiring user" })
+    }
+})
 
 module.exports = router;
