@@ -55,7 +55,8 @@ const InfluencerSchema = new mongoose.Schema({
         default: false
     },
     suspendedOn: Date,
-    SuspensionReason: String
+    SuspensionReason: String,
+    tags: [String]
 })
 
 // userSchame
@@ -95,7 +96,7 @@ const JobSchema = new mongoose.Schema({
     },
     users: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Influencer'
+        ref: 'User'
     }],
     files: [String],
     JobTitle: String,
@@ -122,7 +123,7 @@ const JobSchema = new mongoose.Schema({
     },
     suspendedOn: Date,
     SuspensionReason: String,
-    tags:[String]
+    tags: [String]
 })
 
 const Admin = mongoose.model('Admin', AdminSchema);

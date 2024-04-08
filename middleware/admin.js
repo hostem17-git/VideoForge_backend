@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 function adminMiddleware(req, res, next) {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith("Bearer")) {
         return res.status(401).json({ error: "Authorization token missing" });
     }
 
