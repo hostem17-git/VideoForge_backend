@@ -20,7 +20,8 @@ function adminMiddleware(req, res, next) {
             return res.status(401).json({ error: "authorization token expired" })
         }
         console.log("Influencer JWT verification error", error)
-        res.status(401).json({ error: "Invalid inputs" })
+
+        res.status(401).json({ error: "Invalid token" })
     }
 }
 

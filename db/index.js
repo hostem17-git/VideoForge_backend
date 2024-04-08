@@ -1,6 +1,9 @@
 const mongoose = require("mongoose");
+const { required } = require("nodemon/lib/config");
 const { v4: uuidv4 } = require('uuid');
 const { boolean } = require("zod");
+const { JOB_SCHEMA_OPTIONS } = require('../config')
+
 // Create and export db schemas
 mongoose.connect(process.env.MONGODB_URL_DEV);
 
@@ -98,8 +101,16 @@ const JobSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
-    files: [String],
-    JobTitle: String,
+    rawfiles: [String],
+    finalFiles: [String],
+    JobTitle: {
+        type: String,
+        required: true
+    },
+    Description: {
+        type: String,
+        required: true
+    },
     CreatedDate: {
         type: Date,
         default: () => Date.now()
@@ -110,7 +121,8 @@ const JobSchema = new mongoose.Schema({
     CompletedDate: Date,
     Stage: {
         type: String,
-        enum: ["new", "started", "closed"]
+        enum: ["new", "started", "closed"],
+        default: "new"
     },
     customId: {
         type: String,
@@ -123,7 +135,10 @@ const JobSchema = new mongoose.Schema({
     },
     suspendedOn: Date,
     SuspensionReason: String,
-    tags: [String]
+    tags: {
+        type: [String],
+        enum: JOB_SCHEMA_OPTIONS
+    }
 })
 
 const Admin = mongoose.model('Admin', AdminSchema);

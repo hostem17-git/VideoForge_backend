@@ -17,6 +17,9 @@ function verifyEmail(email) {
 router.post("/Signup", async (req, res) => {
     const { username, email, password } = req.body;
 
+    if (!username || !email || !password)
+        return res.status(400).json({ error: "missing inputs" })
+
     if (!verifyEmail(email)) {
         return res.status(400).json({ error: "Invalid email provided" })
     }
@@ -43,6 +46,9 @@ router.post("/Signup", async (req, res) => {
 
 router.post("/SignIn", async (req, res) => {
     const { email, password } = req.body;
+
+    if (!email || !password)
+        return res.status(400).json({ error: "missing inputs" });
 
     try {
         const admin = await Admin.findOne({

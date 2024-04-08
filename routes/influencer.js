@@ -1,20 +1,42 @@
 const { Router } = require('express');
 const influencerMiddleware = require('../middleware/influencer');
-const { Influencer } = require('../db/index');
+const { Influencer, Job } = require('../db/index');
 const jwt = require("jsonwebtoken");
 const zod = require("zod");
 const bcrypt = require("bcrypt");
+const { validate } = require('uuid');
+const { JOB_SCHEMA_OPTIONS } = require('../config')
 
 const router = Router();
 const emailSchema = zod.string().email();
+
+const jobSchema = zod.object({
+    jobTitle: zod.string().min(10).max(30),
+    jobDescription: zod.string().min(30),
+    startDate: zod.string().datetime(),
+    dueDate: zod.string().datetime(),
+    tags: zod.string().array().min(0).max(10).refine(values => {
+        return values.every(value => JOB_SCHEMA_OPTIONS.includes(value)
+        )
+    })
+})
+
 
 function verifyEmail(email) {
     const response = emailSchema.safeParse(email);
     return response.success;
 }
 
+function validateJob(job) {
+    return jobSchema.safeParse(job).success
+}
+
 router.post("/Signup", async (req, res) => {
     const { username, email, password } = req.body;
+
+    if (!username || !email || !password)
+        return res.status(400).json({ error: "missing inputs" })
+
 
     if (!verifyEmail(email)) {
         return res.status(400).json({ error: "Invalid email provided" })
@@ -40,10 +62,13 @@ router.post("/Signup", async (req, res) => {
     }
 });
 
-
 // TODO: test token expiry
 router.post("/SignIn", async (req, res) => {
     const { email, password } = req.body;
+
+    if (!email || !password)
+        return res.status(400).json({ error: "missing inputs" });
+
 
     try {
         const influencer = await Influencer.findOne({
@@ -85,69 +110,51 @@ router.post("/SignIn", async (req, res) => {
 
 })
 
-// TODO: test populate
-// To get specific user
-router.get("/user/:userId", influencerMiddleware, async (req, res) => {
+router.post("/createjob", influencerMiddleware, async (req, res) => {
     try {
-        const userID = req.params.userId;
-        if (!userID) {
-            return res.status(400).json({ error: "User id not provided" })
-        }
-        const data = await User.findOne({ customId: userID }).populate("JobsTaken").select('-encryptedPassword ');
+        const { jobTitle, jobDescription, startDate, dueDate, tags } = req.body;
 
-        if (data) {
-            return res.status(200).json({
-                data: data
-            })
+        if (!jobTitle || !jobDescription || !startDate || !dueDate) {
+            return res.status(400).json({ error: "missing inputs" });
         }
-        else {
-            return res.status(404).json({
-                message: "User not found"
-            })
+
+        const jobValidation = jobSchema.safeParse({
+            jobTitle,
+            jobDescription,
+            startDate,
+            dueDate,
+            tags
+        })
+
+        if (!jobValidation.success) {
+            return res.status(400).json({ error: jobValidation.error.errors })
         }
+
+        const token = req.headers.authorization.split(" ")[1];
+
+        const decodedValue = jwt.decode(token, process.env.JWT_SECRET);
+
+        const email = decodedValue.email;
+
+        const owner = await Influencer.findOne({ email }).select('-encryptedPassword ');
+
+        const job = await Job.create({
+            owner,
+            JobTitle: jobTitle,
+            Description: jobDescription,
+            StartDate: startDate,
+            DueDate: dueDate,
+            tags: tags
+        });
+
+        res.status(200).json({
+            message: "Job created",
+            // id:job._id
+        })
+    } catch (error) {
+        console.log("Influencer Job creation error", error);
+        res.status(500).json({ error: "Error creating job" })
     }
-    catch (error) {
-        console.log("Admin get user error", error)
-        res.status(500).json({ error: "Unable to fetch user" });
-    }
-});
-
-// TODO: test populate
-//  Get all users
-router.get("/users", influencerMiddleware, async (req, res) => {
-
-    try {
-        const page = parseInt(req.query.page) || 1;
-        const pageSize = parseInt(req.query.pageSize) || 10;
-
-        const offSet = (page - 1) * pageSize;
-
-        const totalCount = await User.countDocuments();
-        const totalPages = Math.ceil(totalCount / pageSize);
-
-        const data = await User.find({}).select('-encryptedPassword ').populate("JobsTaken").skip(offSet).limit(pageSize);
-
-        if (data.length > 0) {
-            return res.status(200).json({
-                page,
-                pageSize,
-                totalCount,
-                totalPages,
-                data,
-
-            })
-        }
-        else {
-            return res.status(404).json({
-                message: "No users found"
-            })
-        }
-    }
-    catch (error) {
-        console.log("Admin get users error", error)
-        res.status(500).json({ error: "Unable to fetch users" });
-    }
-
 });
 
 

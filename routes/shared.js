@@ -1,5 +1,5 @@
 const { Router } = require("express");
-const sharedAccessMiddleware = require("../middleware/shared");
+const { sharedAccessMiddleware } = require("../middleware/shared");
 const { User, Influencer, Job } = require('../db/index');
 
 
@@ -194,3 +194,33 @@ router.get("/jobs", sharedAccessMiddleware, async (req, res) => {
         res.status(500).json({ error: "Unable to fetch jobs" });
     }
 })
+
+// User validation
+router.get("/userValidation/:token", (req, res) => {
+    try {
+        const token = req.params.token;
+        if (!token) {
+            res.status(400).json({ error: "Token missing" });
+        }
+        const decodedValue = jwt.verify(token, process.env.JWT_SECRET);
+        if (decodedValue) {
+            res.status(200).json({
+                userValid: true,
+                role: decodedValue.role
+            })
+        }
+        return res.status(403).json({
+            userValid: true,
+            error: "Unauthorized"
+        })
+    } catch (error) {
+        if (error.name === "TokenExpiredError") {
+            return res.status(401).json({ error: "authorization token expired" })
+        }
+        console.log("admin JWT verification error", error)
+        res.status(401).json({ error: "Invalid inputs" })
+    }
+})
+
+
+module.exports = router;
