@@ -85,6 +85,7 @@ router.post("/SignIn", async (req, res) => {
 
 });
 
+// TODO: test populate
 // To get specific user
 router.get("/user/:userId", adminMiddleware, async (req, res) => {
     try {
@@ -92,7 +93,7 @@ router.get("/user/:userId", adminMiddleware, async (req, res) => {
         if (!userID) {
             return res.status(400).json({ error: "User id not provided" })
         }
-        const data = await User.findOne({ customId: userID }).select('-encryptedPassword ');
+        const data = await User.findOne({ customId: userID }).populate("JobsTaken").select('-encryptedPassword ');
 
         if (data) {
             return res.status(200).json({
@@ -111,14 +112,29 @@ router.get("/user/:userId", adminMiddleware, async (req, res) => {
     }
 });
 
+// TODO: test populate
 //  Get all users
 router.get("/users", adminMiddleware, async (req, res) => {
 
     try {
-        const data = await User.find({}).select('-encryptedPassword ');
+        const page = paresInt(req.query.page) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 10;
+
+        const offSet = (page - 1) * pageSize;
+
+        const totalCount = await User.countDocuments();
+        const totalPages = Math.ceil(totalCount / pageSize);
+
+        const data = await User.find({}).select('-encryptedPassword ').populate("JobsTaken").skip(offSet).limit(pageSize);
+
         if (data.length > 0) {
             return res.status(200).json({
-                data: data
+                page,
+                pageSize,
+                totalCount,
+                totalPages,
+                data,
+
             })
         }
         else {
@@ -134,6 +150,7 @@ router.get("/users", adminMiddleware, async (req, res) => {
 
 });
 
+// TODO: test populate
 // To get specific influencer
 router.get("/influencer/:influencerId", adminMiddleware, async (req, res) => {
     try {
@@ -141,7 +158,7 @@ router.get("/influencer/:influencerId", adminMiddleware, async (req, res) => {
         if (!influencerId) {
             return res.status(400).json({ error: "Influencer id not provided" })
         }
-        const data = await Influencer.findOne({ customId: influencerId }).select('-encryptedPassword ');
+        const data = await Influencer.findOne({ customId: influencerId }).select('-encryptedPassword ').populate("createdJobs");
 
         if (data) {
             return res.status(200).json({
@@ -160,14 +177,28 @@ router.get("/influencer/:influencerId", adminMiddleware, async (req, res) => {
     }
 });
 
-//  Get all influencers
+// TODO: test populate
+// Get all influencers
 router.get("/influencers", adminMiddleware, async (req, res) => {
     try {
-        const data = await Influencer.find({}).select('-encryptedPassword ');
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 10;
+
+        const offSet = (page - 1) * pageSize;
+
+        const totalCount = await Influencer.countDocuments();
+
+        const totalPages = Math.ceil(totalCount / pageSize);
+
+        const data = await Influencer.find({}).select('-encryptedPassword ').populate("createdJobs").skip(offSet).limit(pageSize);
 
         if (data.length > 0) {
             return res.status(200).json({
-                data: data
+                page,
+                pageSize,
+                totalCount,
+                totalPages,
+                data
             })
         }
         else {
@@ -229,6 +260,70 @@ router.get("/admins", adminMiddleware, async (req, res) => {
         res.status(500).json({ error: "Unable to fetch admins" });
     }
 })
+
+// TODO: test populate 
+// To get specific job
+router.get("/job/:jobId", adminMiddleware, async (req, res) => {
+    try {
+        const jobId = req.params.adminId;
+        if (!jobId) {
+            return res.status(400).json({ error: "Job id not provided" })
+        }
+        const data = await Job.findOne({ jobId }).populate("owner users");
+
+        if (data) {
+            return res.status(200).json({
+                data: data
+            })
+        }
+        else {
+            return res.status(404).json({
+                message: "Job not found"
+            })
+        }
+    }
+    catch (error) {
+        console.log("Admin get Job error", error)
+        res.status(500).json({ error: "Unable to fetch Job" });
+    }
+});
+
+// TODO: test populate
+//  Get all jobs
+router.get("/jobs", adminMiddleware, async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 10;
+
+        const offSet = (page - 1) * pageSize;
+
+        const totalCount = await Job.countDocuments();
+
+        const totalPages = Math.ceil(totalCount / pageSize);
+
+        const data = await Job.find({}).select('-encryptedPassword ').skip(offSet).limit(pageSize);
+
+        if (data.length > 0) {
+            return res.status(200).json({
+                page,
+                pageSize,
+                totalCount,
+                totalPages,
+                data
+            })
+        }
+        else {
+            return res.status(404).json({
+                message: "No Jobs found"
+            })
+        }
+    }
+    catch (error) {
+        console.log("Admin get jobs error", error)
+        res.status(500).json({ error: "Unable to fetch jobs" });
+    }
+})
+
 
 // TODO: Test suspend all scenarios
 // Suspend entity
