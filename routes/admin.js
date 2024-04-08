@@ -117,7 +117,7 @@ router.get("/user/:userId", adminMiddleware, async (req, res) => {
 router.get("/users", adminMiddleware, async (req, res) => {
 
     try {
-        const page = paresInt(req.query.page) || 1;
+        const page = parseInt(req.query.page) || 1;
         const pageSize = parseInt(req.query.pageSize) || 10;
 
         const offSet = (page - 1) * pageSize;
