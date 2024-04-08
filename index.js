@@ -6,13 +6,14 @@ const bodyParser = require('body-parser');
 const adminRouter = require("./routes/admin");
 const userRouter = require("./routes/user");
 const influencerRouter = require("./routes/influencer");
+const sharedRouter = require("./routes/shared");
 
 const app = express()
 app.use(bodyParser.json());
-app.use("/admin", adminRouter);
-app.use("/user", userRouter);
-app.use("/influencer", influencerRouter);
-
+app.use("/api/v1/admin", adminRouter);
+app.use("/api/v1/user", userRouter);
+app.use("/api/v1/influencer", influencerRouter);
+app.use("/api/v1/shared", sharedRouter)
 
 app.get("/userValidation/:token", (req, res) => {
 
