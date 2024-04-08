@@ -40,6 +40,8 @@ router.post("/Signup", async (req, res) => {
     }
 });
 
+
+// TODO: test token expiry
 router.post("/SignIn", async (req, res) => {
     const { email, password } = req.body;
 
@@ -82,5 +84,71 @@ router.post("/SignIn", async (req, res) => {
 
 
 })
+
+// TODO: test populate
+// To get specific user
+router.get("/user/:userId", influencerMiddleware, async (req, res) => {
+    try {
+        const userID = req.params.userId;
+        if (!userID) {
+            return res.status(400).json({ error: "User id not provided" })
+        }
+        const data = await User.findOne({ customId: userID }).populate("JobsTaken").select('-encryptedPassword ');
+
+        if (data) {
+            return res.status(200).json({
+                data: data
+            })
+        }
+        else {
+            return res.status(404).json({
+                message: "User not found"
+            })
+        }
+    }
+    catch (error) {
+        console.log("Admin get user error", error)
+        res.status(500).json({ error: "Unable to fetch user" });
+    }
+});
+
+// TODO: test populate
+//  Get all users
+router.get("/users", influencerMiddleware, async (req, res) => {
+
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 10;
+
+        const offSet = (page - 1) * pageSize;
+
+        const totalCount = await User.countDocuments();
+        const totalPages = Math.ceil(totalCount / pageSize);
+
+        const data = await User.find({}).select('-encryptedPassword ').populate("JobsTaken").skip(offSet).limit(pageSize);
+
+        if (data.length > 0) {
+            return res.status(200).json({
+                page,
+                pageSize,
+                totalCount,
+                totalPages,
+                data,
+
+            })
+        }
+        else {
+            return res.status(404).json({
+                message: "No users found"
+            })
+        }
+    }
+    catch (error) {
+        console.log("Admin get users error", error)
+        res.status(500).json({ error: "Unable to fetch users" });
+    }
+
+});
+
 
 module.exports = router;

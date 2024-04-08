@@ -1,7 +1,6 @@
 const jwt = require("jsonwebtoken");
 
 function adminMiddleware(req, res, next) {
-    console.log("in Admin middlewate")
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer")) {
@@ -12,10 +11,6 @@ function adminMiddleware(req, res, next) {
 
     try {
         const decodedValue = jwt.verify(token, process.env.JWT_SECRET);
-        console.log("-----------------");
-        console.log(decodedValue);
-        console.log("-----------------")
-
         if (decodedValue && decodedValue.role === "admin") {
             return next();
         }
