@@ -69,7 +69,6 @@ router.post("/Signup", async (req, res) => {
     }
 });
 
-// TODO: test token expiry
 router.post("/SignIn", async (req, res) => {
     const { email, password } = req.body;
 
@@ -150,24 +149,44 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
 
         const owner = await Influencer.findOne({ email }).select('-encryptedPassword ');
 
-        const job = await Job.create({
+        const influencer = res.locals.influencerDocument;
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        const job = await Job.create([{
             owner,
             JobTitle: jobTitle,
             Description: jobDescription,
             StartDate: startDate,
             DueDate: dueDate,
             tags: tags
-        });
+        }], { session });
+
+
+        influencer.createdJobs.push(job[0]);
+
+        await influencer.save({ session });
+
+        await session.commitTransaction();
+
+        session.endSession();
 
         res.status(200).json({
             message: "Job created",
-            // id:job._id
+            id: job._id
         })
     } catch (error) {
         console.log("Influencer Job creation error", error);
         res.status(500).json({ error: "Error creating job" })
     }
 });
+
+// TODO: update Raw files | need AWS S3 
+// TODO: remove Raw Files | need AWS S3
+// TODO: rename files?    | need AWS S3
+// TODO: trigger upload   | need AWS S3
+// TODO: update my profile
+// TODO: update password
 
 // for influencers to hire users
 router.put("/hire", influencerMiddleware, async (req, res) => {
@@ -232,6 +251,7 @@ router.put("/hire", influencerMiddleware, async (req, res) => {
 })
 
 // To close job
+// TODO: Add option to select close type - "Withdrawan","Completed"
 router.put("/closejob", influencerMiddleware, async (req, res) => {
     try {
         const session = await mongoose.startSession();
@@ -288,5 +308,6 @@ router.put("/closejob", influencerMiddleware, async (req, res) => {
     }
 
 })
+
 
 module.exports = router;

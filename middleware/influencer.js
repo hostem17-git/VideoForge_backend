@@ -14,6 +14,7 @@ async function influencerMiddleware(req, res, next) {
         if (decodedValue && decodedValue.role === "influencer") {
             const influencer = await Influencer.findOne({ email: decodedValue.email })
             if (!influencer.suspended) {
+                res.locals.influencerDocument = influencer;
                 return next();
             }
             return res.status(403).json({
