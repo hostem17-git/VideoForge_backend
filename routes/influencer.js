@@ -141,7 +141,7 @@ router.post("/SignIn", async (req, res) => {
     }
 });
 
-// TODO: How to make it secure???????????????????
+// TODO: How to make it secure???????????????????  | Reset via link???
 router.post("/reset-password", async (req, res) => {
 
 })
@@ -224,7 +224,6 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
 // TODO: remove Raw Files | need AWS S3
 // TODO: rename files?    | need AWS S3
 // TODO: trigger upload   | need AWS S3
-// TODO: update my profile
 
 // for influencers to hire users
 router.put("/hire", influencerMiddleware, async (req, res) => {
@@ -453,4 +452,6 @@ router.put("/updateSocials", influencerMiddleware, async (req, res) => {
         }
     }
 });
+
+
 module.exports = router;

@@ -6,6 +6,7 @@ const zod = require("zod");
 const bcrypt = require("bcrypt");
 const { JWT_LIFE } = require('../config')
 
+const mongoose = require("mongoose")
 const router = Router();
 const emailSchema = zod.string().email();
 
@@ -15,31 +16,48 @@ function verifyEmail(email) {
 }
 
 router.post("/Signup", async (req, res) => {
-    const { username, email, password } = req.body;
-
-    if (!username || !email || !password)
-        return res.status(400).json({ error: "missing inputs" })
-
-    if (!verifyEmail(email)) {
-        return res.status(400).json({ error: "Invalid email provided" })
-    }
-
+    let session;
     try {
+        const { username, email, password } = req.body;
+
+        if (!username || !email || !password)
+            return res.status(400).json({ error: "missing inputs" })
+
+        if (!verifyEmail(email.trim())) {
+            return res.status(400).json({ error: "Invalid email provided" })
+        }
+
         const salt = await bcrypt.genSalt(10);
-        const encryptedPassword = await bcrypt.hash(password, salt);
+        const encryptedPassword = await bcrypt.hash(password.trim(), salt);
+
+        session = await mongoose.startSesson();
+        await session.startTransaction();
 
         await Admin.create({
-            username: username,
-            email: email,
+            username: username.trim(),
+            email: email.trim(),
             encryptedPassword: encryptedPassword
         })
+
+        await session.commitTransaction();
+        session.endSession();
         res.status(200).json({ message: "Admin created successfully" })
     } catch (error) {
         if (error.code == 11000) {
             res.status(409).json({ message: "Email already exists" })
+
         } else {
             console.error("Error signing up admin:", error);
             res.status(500).json({ error: "Internal server error" });
+        }
+
+        if (session) {
+            await session.abortTransaction();
+            session.endSession();
+        }
+    } finally {
+        if (session) {
+            session.endSession();
         }
     }
 });
@@ -52,7 +70,7 @@ router.post("/SignIn", async (req, res) => {
 
     try {
         const admin = await Admin.findOne({
-            email
+            email: email.trim()
         });
 
         if (!admin) {
@@ -67,7 +85,7 @@ router.post("/SignIn", async (req, res) => {
                 errorReason: admin.SuspensionReason
             })
         }
-        const match = await bcrypt.compare(password, admin.encryptedPassword);
+        const match = await bcrypt.compare(password.trim(), admin.encryptedPassword);
 
         if (!match) {
             return res.status(401).json({
@@ -76,7 +94,7 @@ router.post("/SignIn", async (req, res) => {
         }
 
         const token = jwt.sign({
-            email: email,
+            email: email.trim(),
             role: "admin",
         },
             process.env.JWT_SECRET,
@@ -92,11 +110,7 @@ router.post("/SignIn", async (req, res) => {
         console.log("Admin Sign in error", err);
         return res.status(500).json({ error: "Internal server error" })
     }
-
-
-
 });
-
 
 // To get specific admin
 router.get("/admin/:adminId", adminMiddleware, async (req, res) => {
@@ -105,7 +119,7 @@ router.get("/admin/:adminId", adminMiddleware, async (req, res) => {
         if (!adminId) {
             return res.status(400).json({ error: "Admin id not provided" })
         }
-        const data = await Admin.findOne({ customId: adminId }).select('-encryptedPassword ');
+        const data = await Admin.findOne({ customId: adminId.trim() }).select('-encryptedPassword ');
 
         if (data) {
             return res.status(200).json({
@@ -124,6 +138,7 @@ router.get("/admin/:adminId", adminMiddleware, async (req, res) => {
     }
 });
 
+// TODO: Add pagination
 //  Get all admins
 router.get("/admins", adminMiddleware, async (req, res) => {
     try {
@@ -149,10 +164,16 @@ router.get("/admins", adminMiddleware, async (req, res) => {
 // TODO: Test suspend all scenarios
 // Suspend entity
 router.put("/suspend/:type", adminMiddleware, async (req, res) => {
+    let session;
     try {
         const type = req.params.type;
 
-        if (!(type === "user" || type === "influencer" || type === "job" || type === "admin")) {
+        if (!type) {
+            return res.status(400).json({ message: "incorret path" })
+
+        }
+
+        if (!(type.trim() === "user" || type.trim() === "influencer" || type.trim() === "job" || type.trim() === "admin")) {
             return res.status(400).json({ message: "incorret path" })
         }
 
@@ -161,7 +182,7 @@ router.put("/suspend/:type", adminMiddleware, async (req, res) => {
             return res.status(400).json({ error: "Invalid input" })
         }
         let Model;
-        switch (type) {
+        switch (type.trim()) {
             case "user":
                 Model = User;
                 break;
@@ -178,7 +199,7 @@ router.put("/suspend/:type", adminMiddleware, async (req, res) => {
                 break;
         }
 
-        const entity = await Model.findOne({ customId: userId }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api');
+        const entity = await Model.findOne({ customId: userId.trim() }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api');
 
         if (!entity) {
             return res.status(404).json({
@@ -190,16 +211,21 @@ router.put("/suspend/:type", adminMiddleware, async (req, res) => {
             return res.status(200).json({ message: `${type} already suspended` })
         }
 
+        session = await mongoose.startSession();
+        session.startTransaction();
+
         entity.suspended = true;
         entity.suspendedOn = new Date();
         entity.SuspensionReason = reason;
 
-        if (type === "job") {
+        if (type.trim() === "job") {
             entity.Stage = "suspended"
         }
 
         await entity.save();
 
+        await session.commitTransaction();
+        session.endSession();
         return res.status(200).json({
             message: `${type} suspended`
         });
@@ -208,16 +234,30 @@ router.put("/suspend/:type", adminMiddleware, async (req, res) => {
     catch (error) {
         console.log(`Admin suspend ${type} error`, error)
         res.status(500).json({ error: `Unable to suspend ${type}` });
+        if (session) {
+            await session.abortTransaction();
+            session.endSession();
+        }
+    } finally {
+        if (session) {
+            session.endSession();
+        }
     }
 });
 
 // TODO: Test reinstate all scenarios
 // reinstate entity
 router.put("/reinstate/:type", adminMiddleware, async (req, res) => {
+    let session;
     try {
         const type = req.params.type;
 
-        if (!(type === "user" || type === "influencer" || type === "job" || type === "admin")) {
+        if (!type) {
+            return res.status(400).json({ message: "incorret path" })
+
+        }
+
+        if (!(type.trim() === "user" || type.trim() === "influencer" || type.trim() === "job" || type.trim() === "admin")) {
             return res.status(400).json({ message: "incorret path" })
         }
 
@@ -226,7 +266,7 @@ router.put("/reinstate/:type", adminMiddleware, async (req, res) => {
             return res.status(400).json({ error: "Invalid input" })
         }
         let Model;
-        switch (type) {
+        switch (type.trim()) {
             case "user":
                 Model = User;
                 break;
@@ -255,10 +295,15 @@ router.put("/reinstate/:type", adminMiddleware, async (req, res) => {
             return res.status(400).json({ message: `${type} not suspended,cannot reinstate` })
         }
 
+        session = await mongoose.startSession();
+        session.startTransaction();
+
         entity.suspended = false;
 
         await entity.save();
 
+        await session.commitTransaction();
+        session.endSession();
         return res.status(200).json({
             message: `${type} reinstated`
         });
@@ -267,6 +312,14 @@ router.put("/reinstate/:type", adminMiddleware, async (req, res) => {
     catch (error) {
         console.log(`Admin reinstate ${type} error`, error)
         res.status(500).json({ error: `Unable to reinstate ${type}` });
+        if (session) {
+            await session.abortTransaction();
+            session.endSession();
+        }
+    } finally {
+        if (session) {
+            session.endSession();
+        }
     }
 });
 
