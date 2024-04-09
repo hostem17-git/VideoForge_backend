@@ -6,7 +6,8 @@ const zod = require("zod");
 const bcrypt = require("bcrypt");
 const { validate } = require('uuid');
 const { JOB_SCHEMA_OPTIONS } = require('../config')
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
+const { route } = require('./admin');
 
 
 const router = Router();
@@ -122,8 +123,7 @@ router.post("/SignIn", async (req, res) => {
 
 })
 
-
-// FIXME: make sure influencer is not suspended
+// To create a new job
 router.post("/createjob", influencerMiddleware, async (req, res) => {
     try {
         const { jobTitle, jobDescription, startDate, dueDate, tags } = req.body;
@@ -169,56 +169,47 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
     }
 });
 
-// FIXME: make sure influencer is not suspended
-// for influencers to hire freelancers
-router.post("/hire", influencerMiddleware, async (req, res) => {
+// for influencers to hire users
+router.put("/hire", influencerMiddleware, async (req, res) => {
     try {
-        const session = await mongoose.startSession();
-        session.startTransaction();
-
         const { jobId, userId } = req.body;
 
         if (!jobId || !userId) {
             return res.status(400).json({ error: "Invalid inputs" });
         }
 
-        const job = await Job.findOne({ customId: jobId }).session(session).populate("owner");
-
+        const job = await Job.findOne({ customId: jobId }).populate("owner");
 
         if (!job) {
-            await session.abortTransaction();
             return res.status(400).json({ error: "Invalid job ID" });
         }
 
-        const userEmail = tokenDecoder(req.headers.authorization.split(" ")[1]).email;
+        const influencerMail = tokenDecoder(req.headers.authorization.split(" ")[1]).email;
 
-        if (job.owner.email !== userEmail) {
-            await session.abortTransaction();
+        if (job.owner.email !== influencerMail) {
             return res.status(403).json({ error: "Cannot hire to a non-owned job" })
         }
         if (job.Stage !== "new") {
-            await session.abortTransaction();
             return res.status(400).json({ error: `Cannot hire on job which already ${job.Stage}` })
         }
 
         if (job.suspended) {
-            await session.abortTransaction();
             return res.status(400).json({ error: "Job not available" })
         }
 
-        const user = await User.findOne({ customId: userId }).session(session);
+        const user = await User.findOne({ customId: userId });
 
         if (!user) {
-            await session.abortTransaction();
             return res.status(400).json({ error: "Invalid user Id" })
         }
 
         if (user.suspended) {
-            await session.abortTransaction();
             return res.status(400).json({ error: "Cannot hire a suspended user" })
         }
 
+        const session = await mongoose.startSession();
 
+        session.startTransaction();
 
         job.users.push(user);
         job.Stage = "started";
@@ -238,6 +229,64 @@ router.post("/hire", influencerMiddleware, async (req, res) => {
         console.log("Hire user error", error);
         res.status(500).json({ error: "Error hiring user" })
     }
+})
+
+// To close job
+router.put("/closejob", influencerMiddleware, async (req, res) => {
+    try {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        const { jobId, closeReason } = req.body;
+
+        if (!jobId) {
+            await session.abortTransaction();
+            return res.status(400).json({ error: "Invalid inputs" });
+        }
+
+        const job = await Job.findOne({ customId: jobId }).session(session).populate("owner");
+
+        if (!job) {
+            await session.abortTransaction();
+            return res.status(400).json({ error: "Invalid job ID" });
+        }
+
+        const influencerMail = tokenDecoder(req.headers.authorization.split(" ")[1]).email;
+
+        if (job.owner.email !== influencerMail) {
+            await session.abortTransaction();
+            return res.status(403).json({ error: "Cannot close a non-owned job" })
+        }
+
+        if (job.suspended) {
+            await session.abortTransaction();
+            return res.status(400).json({ error: "Job not available" })
+        }
+
+        if (job.Stage === "closed") {
+            await session.abortTransaction();
+            return res.status(409).json({ error: "Job already closed" })
+        }
+
+        job.Stage = "closed";
+        job.CloseReason = closeReason;
+        job.ClosedDate = new Date().toISOString();
+        await job.save({ session });
+
+        await session.commitTransaction();
+        session.endSession();
+        return res.status(200).json({
+            message: "Job closed successfully",
+            closedJob: job
+        })
+
+    } catch (error) {
+        console.log("Close job error", error);
+        res.status(500).json({
+            error: "Error closing job"
+        })
+    }
+
 })
 
 module.exports = router;

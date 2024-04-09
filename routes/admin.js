@@ -194,6 +194,10 @@ router.put("/suspend/:type", adminMiddleware, async (req, res) => {
         entity.suspendedOn = new Date();
         entity.SuspensionReason = reason;
 
+        if (type === "job") {
+            entity.Stage = "suspended"
+        }
+
         await entity.save();
 
         return res.status(200).json({

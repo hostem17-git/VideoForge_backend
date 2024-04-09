@@ -118,10 +118,10 @@ const JobSchema = new mongoose.Schema({
     StartDate: Date,
     DueDate: Date,
     ClosedDate: Date,
-    CompletedDate: Date,
+    CloseReason: String,
     Stage: {
         type: String,
-        enum: ["new", "started", "closed"],
+        enum: ["new", "started", "closed", "suspended"],
         default: "new"
     },
     customId: {
