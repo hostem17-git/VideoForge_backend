@@ -49,12 +49,13 @@ router.post("/Signup", async (req, res) => {
 
         if (!username || !email || !password)
             return res.status(400).json({ error: "missing inputs" })
+
         if (!verifyEmail(email)) {
             return res.status(400).json({ error: "Invalid email provided" })
         }
 
         const salt = await bcrypt.genSalt(10);
-        const encryptedPassword = await bcrypt.hash(password, salt);
+        const encryptedPassword = await bcrypt.hash(password.trim(), salt);
 
         session = await mongoose.startSession();
 
@@ -64,8 +65,8 @@ router.post("/Signup", async (req, res) => {
 
         session.startTransaction();
         await Influencer.create({
-            username: username,
-            email: email,
+            username: username.trim(),
+            email: email.trim(),
             encryptedPassword: encryptedPassword
         })
 
@@ -98,7 +99,7 @@ router.post("/SignIn", async (req, res) => {
 
     try {
         const influencer = await Influencer.findOne({
-            email
+            email: email.trim()
         });
 
         if (!influencer) {
@@ -114,7 +115,7 @@ router.post("/SignIn", async (req, res) => {
             })
         }
 
-        const match = await bcrypt.compare(password, influencer.encryptedPassword);
+        const match = await bcrypt.compare(password.trim(), influencer.encryptedPassword);
 
         if (!match) {
             return res.status(401).json({
@@ -123,7 +124,7 @@ router.post("/SignIn", async (req, res) => {
         }
 
         const token = jwt.sign({
-            email: email,
+            email: email.trim(),
             role: "influencer"
         }, process.env.JWT_SECRET,
             { expiresIn: JWT_LIFE }
@@ -138,17 +139,12 @@ router.post("/SignIn", async (req, res) => {
         console.log("Influencer Sign in error", err);
         return res.status(500).json({ error: "Internal server error" })
     }
-
-
-
-})
-
+});
 
 // TODO: How to make it secure???????????????????
 router.post("/reset-password", async (req, res) => {
 
 })
-
 
 // To create a new job
 router.post("/createjob", influencerMiddleware, async (req, res) => {
@@ -162,8 +158,8 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
         }
 
         const jobValidation = jobSchema.safeParse({
-            jobTitle,
-            jobDescription,
+            jobTitle: jobTitle.trim(),
+            jobDescription: jobDescription.trim(),
             startDate,
             dueDate,
             tags
@@ -177,7 +173,7 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
         const decodedToken = tokenDecoder(req.headers.authorization.split(" ")[1]);
         const email = decodedToken.email;
 
-        const owner = await Influencer.findOne({ email }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api');
+        const owner = await Influencer.findOne({ email: email.trim() }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api');
 
         const influencer = res.locals.influencerDocument;
         session = await mongoose.startSession();
@@ -190,8 +186,8 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
 
         const job = await Job.create([{
             owner,
-            JobTitle: jobTitle,
-            Description: jobDescription,
+            JobTitle: jobTitle.trim(),
+            Description: jobDescription.trim(),
             StartDate: startDate,
             DueDate: dueDate,
             tags: tags
@@ -229,7 +225,6 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
 // TODO: rename files?    | need AWS S3
 // TODO: trigger upload   | need AWS S3
 // TODO: update my profile
-// TODO: update password
 
 // for influencers to hire users
 router.put("/hire", influencerMiddleware, async (req, res) => {
@@ -241,7 +236,7 @@ router.put("/hire", influencerMiddleware, async (req, res) => {
             return res.status(400).json({ error: "Invalid inputs" });
         }
 
-        const job = await Job.findOne({ customId: jobId }).populate("owner");
+        const job = await Job.findOne({ customId: jobId.trim() }).populate("owner");
 
         if (!job) {
             return res.status(400).json({ error: "Invalid job ID" });
@@ -260,7 +255,7 @@ router.put("/hire", influencerMiddleware, async (req, res) => {
             return res.status(400).json({ error: "Job not available" })
         }
 
-        const user = await User.findOne({ customId: userId });
+        const user = await User.findOne({ customId: userId.trim() });
 
         if (!user) {
             return res.status(400).json({ error: "Invalid user Id" })
@@ -304,8 +299,6 @@ router.put("/hire", influencerMiddleware, async (req, res) => {
 // TODO: Add option to select close type - "Withdrawan","Completed"
 router.put("/closejob", influencerMiddleware, async (req, res) => {
     let session;
-
-
     try {
         const { jobId, closeReason } = req.body;
 
@@ -314,7 +307,7 @@ router.put("/closejob", influencerMiddleware, async (req, res) => {
             return res.status(400).json({ error: "Invalid inputs" });
         }
 
-        const job = await Job.findOne({ customId: jobId }).session(session).populate("owner");
+        const job = await Job.findOne({ customId: jobId.trim() }).session(session).populate("owner");
 
         if (!job) {
             await session.abortTransaction();
@@ -342,7 +335,7 @@ router.put("/closejob", influencerMiddleware, async (req, res) => {
         session.startTransaction();
 
         job.Stage = "closed";
-        job.CloseReason = closeReason;
+        job.CloseReason = closeReason.trim();
         job.ClosedDate = new Date().toISOString();
         await job.save({ session });
 
@@ -374,7 +367,6 @@ router.put("/closejob", influencerMiddleware, async (req, res) => {
 
 });
 
-
 router.put("/updateSocials", influencerMiddleware, async (req, res) => {
     let session;
     try {
@@ -386,8 +378,8 @@ router.put("/updateSocials", influencerMiddleware, async (req, res) => {
 
         if (Youtube) {
             const result = socialSchema.safeParse({
-                url: Youtube,
-                api: Youtube_api
+                url: Youtube.trim(),
+                api: Youtube_api.trim()
             })
             if (!result.success) {
                 return res.status(400).json({ error: "Invalid Youtube url/api" })
@@ -396,8 +388,8 @@ router.put("/updateSocials", influencerMiddleware, async (req, res) => {
 
         if (Instagram) {
             const result = socialSchema.safeParse({
-                url: Instagram,
-                api: Instagram_api
+                url: Instagram.trim(),
+                api: Instagram_api.trim()
             })
             if (!result.success) {
                 return res.status(400).json({ error: "Invalid Instagram url/api" })
@@ -406,8 +398,8 @@ router.put("/updateSocials", influencerMiddleware, async (req, res) => {
 
         if (Facebook) {
             const result = socialSchema.safeParse({
-                url: Facebook,
-                api: Facebook_api
+                url: Facebook.trim(),
+                api: Facebook_api.trim()
             })
             if (!result.success) {
                 return res.status(400).json({ error: "Invalid Facebook url/api" })
