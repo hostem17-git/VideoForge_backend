@@ -7,6 +7,10 @@ const bcrypt = require("bcrypt");
 
 const router = Router();
 const emailSchema = zod.string().email();
+const socialSchema = zod.object({
+    url: zod.string().url(),
+    // api: zod.string().optional()
+})
 
 function verifyEmail(email) {
     const response = emailSchema.safeParse(email);
@@ -88,6 +92,89 @@ router.post("/SignIn", async (req, res) => {
 
 
 
-})
+});
+
+// to update socials
+router.put("/updateSocials", userMiddleware, async (req, res) => {
+    let session;
+    try {
+        const { Youtube, Instagram, Facebook } = req.body;
+
+        if (!Youtube && !Instagram && !Facebook) {
+            res.status(400).json({ error: "atleast one social URL needed" })
+        }
+
+        if (Youtube) {
+            const result = socialSchema.safeParse({
+                url: Youtube.trim(),
+            })
+            if (!result.success) {
+                return res.status(400).json({ error: "Invalid Youtube url" })
+            }
+        }
+
+        if (Instagram) {
+            const result = socialSchema.safeParse({
+                url: Instagram.trim(),
+            })
+            if (!result.success) {
+                return res.status(400).json({ error: "Invalid Instagram url/api" })
+            }
+        }
+
+        if (Facebook) {
+            const result = socialSchema.safeParse({
+                url: Facebook.trim(),
+            })
+            if (!result.success) {
+                return res.status(400).json({ error: "Invalid Facebook url/api" })
+            }
+        }
+
+        session = await mongoose.startSession();
+
+        if (!session) {
+            return res.status(500).json({ error: "Error initiaing a DB session" })
+        }
+
+        session.startTransaction();
+
+        const user = res.locals.userDocument;
+
+        if (Youtube) {
+            user.Youtube = Youtube.trim();
+        }
+
+        if (Instagram) {
+            user.Instagram = Instagram.trim();
+        }
+
+        if (Facebook) {
+            user.Facebook = Facebook.trim();
+        }
+
+        await user.save();
+
+        session.commitTransaction();
+        session.endSession();
+        res.status(200).json({ message: "Socials updated" })
+
+
+    } catch (error) {
+        console.log("Update user profile error", error);
+        res.status(500).json({ error: "Error updating user profile" });
+        if (session) {
+
+            session.abortTransaction();
+            session.endSession();
+        }
+    }
+    finally {
+        if (session) {
+            session.endSession();
+        }
+    }
+});
+
 
 module.exports = router;

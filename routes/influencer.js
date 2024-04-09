@@ -100,7 +100,7 @@ router.post("/SignIn", async (req, res) => {
     try {
         const influencer = await Influencer.findOne({
             email: email.trim()
-        });
+        }).select('-Youtube_api -X_api -Instagram_api -Facebook_api');
 
         if (!influencer) {
             return res.status(401).json({

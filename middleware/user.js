@@ -14,8 +14,9 @@ async function userMiddleware(req, res, next) {
     try {
         const decodedValue = jwt.verify(token, process.env.JWT_SECRET);
         if (decodedValue && decodedValue.role === "user") {
-            const user = await User.findOne({ email: decodedValue.email });
+            const user = await User.findOne({ email: decodedValue.email }).select('-encryptedPassword');
             if (!user.suspended) {
+                res.locals.userDocument = user;
                 return next();
             }
             return res.status(403).json({
