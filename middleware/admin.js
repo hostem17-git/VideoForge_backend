@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
+const { Admin } = require("../db");
 
-function adminMiddleware(req, res, next) {
+async function adminMiddleware(req, res, next) {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer")) {
@@ -12,7 +13,16 @@ function adminMiddleware(req, res, next) {
     try {
         const decodedValue = jwt.verify(token, process.env.JWT_SECRET);
         if (decodedValue && decodedValue.role === "admin") {
-            return next();
+            const admin = await Admin.findOne({ email: decodedValue.email });
+            if (!admin.suspended) {
+                return next();
+            }
+            else {
+                return res.status(403).json({
+                    error: "User suspended",
+                    errorReason: admin.SuspensionReason
+                })
+            }
         }
         return res.status(403).json({ error: "Unauthorized" })
     } catch (error) {

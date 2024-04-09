@@ -1,5 +1,5 @@
 const { Router } = require("express");
-const { sharedAccessMiddleware } = require("../middleware/shared");
+const sharedAccessMiddleware = require("../middleware/shared");
 const { User, Influencer, Job } = require('../db/index');
 
 

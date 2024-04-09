@@ -1,7 +1,8 @@
 // Video editors
 const jwt = require("jsonwebtoken");
+const { User } = require("../db");
 
-function adminMiddleware(req, res, next) {
+async function userMiddleware(req, res, next) {
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
@@ -13,7 +14,14 @@ function adminMiddleware(req, res, next) {
     try {
         const decodedValue = jwt.verify(token, process.env.JWT_SECRET);
         if (decodedValue && decodedValue.role === "user") {
-            return next();
+            const user = await User.findOne({ email: decodedValue.email });
+            if (!user.suspended) {
+                return next();
+            }
+            return res.status(403).json({
+                error: "User suspended",
+                errorReason: user.SuspensionReason
+            })
         }
         return res.status(403).json({ error: "Unauthorized" })
     } catch (error) {
@@ -25,4 +33,4 @@ function adminMiddleware(req, res, next) {
     }
 }
 
-module.exports = adminMiddleware;
+module.exports = userMiddleware;

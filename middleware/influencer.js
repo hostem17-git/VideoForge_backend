@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
+const { Influencer } = require("../db");
 
-function adminMiddleware(req, res, next) {
+async function influencerMiddleware(req, res, next) {
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
@@ -12,7 +13,14 @@ function adminMiddleware(req, res, next) {
     try {
         const decodedValue = jwt.verify(token, process.env.JWT_SECRET);
         if (decodedValue && decodedValue.role === "influencer") {
-            return next();
+            const influencer = await Influencer.findOne({ email: decodedValue.email })
+            if (!influencer.suspended) {
+                return next();
+            }
+            return res.status(403).json({
+                error: "User suspended",
+                errorReason: influencer.SuspensionReason
+            })
         }
         return res.status(403).json({ error: "Unauthorized" })
     } catch (error) {
@@ -25,4 +33,4 @@ function adminMiddleware(req, res, next) {
     }
 }
 
-module.exports = adminMiddleware;
+module.exports = influencerMiddleware;

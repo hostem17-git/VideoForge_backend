@@ -27,4 +27,4 @@ function sharedAccessMiddleware(req, res, next) {
     }
 }
 
-module.exports = { sharedAccessMiddleware }
+module.exports = sharedAccessMiddleware 
