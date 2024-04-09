@@ -81,15 +81,22 @@ router.post("/SignIn", async (req, res) => {
         });
 
         if (!influencer) {
-            res.status(401).json({
+            return res.status(401).json({
                 message: "Incorrect credentials"
+            })
+        }
+
+        if (influencer.suspended) {
+            return res.status(403).json({
+                error: "Influencer suspended",
+                errorReason: influencer.SuspensionReason
             })
         }
 
         const match = await bcrypt.compare(password, influencer.encryptedPassword);
 
         if (!match) {
-            res.status(401).json({
+            return res.status(401).json({
                 message: "Incorrect credentials"
             })
         }
@@ -101,14 +108,14 @@ router.post("/SignIn", async (req, res) => {
             { expiresIn: JWT_LIFE }
         )
 
-        res.status(200).json({
+        return res.status(200).json({
             token: token
         })
 
 
     } catch (err) {
         console.log("Influencer Sign in error", err);
-        res.status(500).json({ error: "Internal server error" })
+        return res.status(500).json({ error: "Internal server error" })
     }
 
 
