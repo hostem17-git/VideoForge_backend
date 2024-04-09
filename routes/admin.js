@@ -178,7 +178,7 @@ router.put("/suspend/:type", adminMiddleware, async (req, res) => {
                 break;
         }
 
-        const entity = await Model.findOne({ customId: userId }).select('-encryptedPassword ');
+        const entity = await Model.findOne({ customId: userId }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api');
 
         if (!entity) {
             return res.status(404).json({
@@ -243,7 +243,7 @@ router.put("/reinstate/:type", adminMiddleware, async (req, res) => {
                 break;
         }
 
-        const entity = await Model.findOne({ customId: userId }).select('-encryptedPassword ');
+        const entity = await Model.findOne({ customId: userId }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api');
 
         if (!entity) {
             return res.status(404).json({

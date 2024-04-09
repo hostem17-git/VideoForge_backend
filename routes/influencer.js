@@ -13,6 +13,11 @@ const { route } = require('./admin');
 const router = Router();
 const emailSchema = zod.string().email();
 
+const socialSchema = zod.object({
+    url: zod.string().url(),
+    api: zod.string().optional()
+})
+
 const jobSchema = zod.object({
     jobTitle: zod.string().min(10).max(30),
     jobDescription: zod.string().min(30),
@@ -31,33 +36,41 @@ function tokenDecoder(token) {
     return decodedValue;
 }
 
-
 function verifyEmail(email) {
     const response = emailSchema.safeParse(email);
     return response.success;
 }
 
-
 router.post("/Signup", async (req, res) => {
-    const { username, email, password } = req.body;
-
-    if (!username || !email || !password)
-        return res.status(400).json({ error: "missing inputs" })
-
-
-    if (!verifyEmail(email)) {
-        return res.status(400).json({ error: "Invalid email provided" })
-    }
-
+    let session;
     try {
+
+        const { username, email, password } = req.body;
+
+        if (!username || !email || !password)
+            return res.status(400).json({ error: "missing inputs" })
+        if (!verifyEmail(email)) {
+            return res.status(400).json({ error: "Invalid email provided" })
+        }
+
         const salt = await bcrypt.genSalt(10);
         const encryptedPassword = await bcrypt.hash(password, salt);
 
+        session = await mongoose.startSession();
+
+        if (!session) {
+            return res.status(500).json({ error: "Error initiating a DB session" })
+        }
+
+        session.startTransaction();
         await Influencer.create({
             username: username,
             email: email,
             encryptedPassword: encryptedPassword
         })
+
+        await session.commitTransaction();
+        session.endSession();
         res.status(200).json({ message: "Influencer created successfully" })
     } catch (error) {
         if (error.code == 11000) {
@@ -65,6 +78,14 @@ router.post("/Signup", async (req, res) => {
         } else {
             console.error("Error signing up influencer:", error);
             res.status(500).json({ error: "Internal server error" });
+        }
+        if (session) {
+            await session.abortTransaction();
+            session.endSession();
+        }
+    } finally {
+        if (session) {
+            session.endSession();
         }
     }
 });
@@ -122,8 +143,17 @@ router.post("/SignIn", async (req, res) => {
 
 })
 
+
+// TODO: How to make it secure???????????????????
+router.post("/reset-password", async (req, res) => {
+
+})
+
+
 // To create a new job
 router.post("/createjob", influencerMiddleware, async (req, res) => {
+    let session;
+
     try {
         const { jobTitle, jobDescription, startDate, dueDate, tags } = req.body;
 
@@ -147,10 +177,15 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
         const decodedToken = tokenDecoder(req.headers.authorization.split(" ")[1]);
         const email = decodedToken.email;
 
-        const owner = await Influencer.findOne({ email }).select('-encryptedPassword ');
+        const owner = await Influencer.findOne({ email }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api');
 
         const influencer = res.locals.influencerDocument;
-        const session = await mongoose.startSession();
+        session = await mongoose.startSession();
+
+        if (!session) {
+            return res.status(500).json({ error: "Error initiating DB session" })
+        }
+
         session.startTransaction();
 
         const job = await Job.create([{
@@ -177,7 +212,15 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
         })
     } catch (error) {
         console.log("Influencer Job creation error", error);
-        res.status(500).json({ error: "Error creating job" })
+        res.status(500).json({ error: "Error creating job" });
+        if (session) {
+            session.abortTransaction();
+            session.endSession()
+        }
+    } finally {
+        if (session) {
+            session.endSession();
+        }
     }
 });
 
@@ -190,6 +233,7 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
 
 // for influencers to hire users
 router.put("/hire", influencerMiddleware, async (req, res) => {
+    let session;
     try {
         const { jobId, userId } = req.body;
 
@@ -226,37 +270,43 @@ router.put("/hire", influencerMiddleware, async (req, res) => {
             return res.status(400).json({ error: "Cannot hire a suspended user" })
         }
 
-        const session = await mongoose.startSession();
-
+        session = await mongoose.startSession();
         session.startTransaction();
 
         job.users.push(user);
         job.Stage = "started";
         user.JobsTaken.push(job);
 
-
         await job.save({ session });
         await user.save({ session });
 
         await session.commitTransaction();
-
         session.endSession();
+
         return res.status(200).json({
             message: "hired successfully"
         })
     } catch (error) {
         console.log("Hire user error", error);
         res.status(500).json({ error: "Error hiring user" })
+        if (session) {
+            await session.abortTransaction();
+            session.endSession();
+        }
+    } finally {
+        if (session) {
+            session.endSession();
+        }
     }
 })
 
 // To close job
 // TODO: Add option to select close type - "Withdrawan","Completed"
 router.put("/closejob", influencerMiddleware, async (req, res) => {
-    try {
-        const session = await mongoose.startSession();
-        session.startTransaction();
+    let session;
 
+
+    try {
         const { jobId, closeReason } = req.body;
 
         if (!jobId) {
@@ -288,6 +338,9 @@ router.put("/closejob", influencerMiddleware, async (req, res) => {
             return res.status(409).json({ error: "Job already closed" })
         }
 
+        session = await mongoose.startSession();
+        session.startTransaction();
+
         job.Stage = "closed";
         job.CloseReason = closeReason;
         job.ClosedDate = new Date().toISOString();
@@ -295,6 +348,7 @@ router.put("/closejob", influencerMiddleware, async (req, res) => {
 
         await session.commitTransaction();
         session.endSession();
+
         return res.status(200).json({
             message: "Job closed successfully",
             closedJob: job
@@ -302,12 +356,109 @@ router.put("/closejob", influencerMiddleware, async (req, res) => {
 
     } catch (error) {
         console.log("Close job error", error);
+        await session.abortTransaction();
+        if (session) {
+            await session.abortTransaction();
+            session.endSession();
+
+        }
         res.status(500).json({
             error: "Error closing job"
         })
+
+    } finally {
+        if (session) {
+            session.endSession();
+        }
     }
 
-})
+});
 
 
+router.put("/updateSocials", influencerMiddleware, async (req, res) => {
+    let session;
+    try {
+        const { Youtube, Youtube_api, Instagram, Instagram_api, Facebook, Facebook_api } = req.body;
+
+        if (!Youtube && !Instagram && !Facebook) {
+            res.status(400).json({ error: "atleast one social URL and api needed" })
+        }
+
+        if (Youtube) {
+            const result = socialSchema.safeParse({
+                url: Youtube,
+                api: Youtube_api
+            })
+            if (!result.success) {
+                return res.status(400).json({ error: "Invalid Youtube url/api" })
+            }
+        }
+
+        if (Instagram) {
+            const result = socialSchema.safeParse({
+                url: Instagram,
+                api: Instagram_api
+            })
+            if (!result.success) {
+                return res.status(400).json({ error: "Invalid Instagram url/api" })
+            }
+        }
+
+        if (Facebook) {
+            const result = socialSchema.safeParse({
+                url: Facebook,
+                api: Facebook_api
+            })
+            if (!result.success) {
+                return res.status(400).json({ error: "Invalid Facebook url/api" })
+            }
+        }
+
+        session = await mongoose.startSession();
+
+        if (!session) {
+            return res.status(500).json({ error: "Error initiaing a DB session" })
+        }
+
+        session.startTransaction();
+
+        const influencer = res.locals.influencerDocument;
+
+        if (Youtube) {
+            influencer.Youtube = Youtube.trim();
+            influencer.Youtube_api = Youtube_api ? Youtube_api.trim() : undefined;
+        }
+
+        if (Instagram) {
+            influencer.Instagram = Instagram.trim();
+            influencer.Instagram_api = Instagram_api ? Instagram_api.trim() : undefined;
+        }
+
+        if (Facebook) {
+            influencer.Facebook = Facebook.trim();
+            influencer.Facebook_api = Facebook_api ? Facebook_api.trim() : undefined;
+        }
+
+        await influencer.save();
+
+        session.commitTransaction();
+        session.endSession();
+        res.status(200).json({ message: "Socials updated" })
+
+
+    } catch (error) {
+        console.log("Update profile error", error);
+        res.status(500).json({ error: "Error updating profile" });
+        if (session) {
+
+            session.abortTransaction();
+            session.endSession();
+        }
+    }
+    finally {
+        if (session) {
+            session.endSession();
+        }
+    }
+});
 module.exports = router;

@@ -2,17 +2,22 @@ const mongoose = require("mongoose");
 const { required } = require("nodemon/lib/config");
 const { v4: uuidv4 } = require('uuid');
 const { boolean } = require("zod");
-const { JOB_SCHEMA_OPTIONS } = require('../config')
+const { JOB_SCHEMA_OPTIONS } = require('../config');
+const { stringify } = require("nodemon/lib/utils");
 
 // Create and export db schemas
 mongoose.connect(process.env.MONGODB_URL_DEV);
 
 // Admin Schemna 
 const AdminSchema = new mongoose.Schema({
-    username: String,
+    username: {
+        type: String,
+        set: (value) => value.toLowerCase()
+    },
     email: {
         type: String,
         unique: true,
+        set: (value) => value.toLowerCase()
     },
     encryptedPassword: String,
     DateCreated: {
@@ -34,10 +39,14 @@ const AdminSchema = new mongoose.Schema({
 
 // InfluencerSchema
 const InfluencerSchema = new mongoose.Schema({
-    username: String,
+    username: {
+        type: String,
+        set: (value) => value.toLowerCase()
+    },
     email: {
         type: String,
         unique: true,
+        set: (value) => value.toLowerCase()
     },
     encryptedPassword: String,
     createdJobs: [{
@@ -50,9 +59,11 @@ const InfluencerSchema = new mongoose.Schema({
         unique: true
     },
     Youtube: String,
-    X: String,
+    Youtube_api: String,
     Instagram: String,
+    Instagram_api: String,
     Facebook: String,
+    Facebook_api: String,
     suspended: {
         type: Boolean,
         default: false
@@ -64,10 +75,14 @@ const InfluencerSchema = new mongoose.Schema({
 
 // userSchame
 const UserSchema = new mongoose.Schema({
-    username: String,
+    username: {
+        type: String,
+        set: (value) => value.toLowerCase()
+    },
     email: {
         type: String,
         unique: true,
+        set: (value) => value.toLowerCase()
     },
     encryptedPassword: String,
     JobsTaken: [{

@@ -77,7 +77,7 @@ router.get("/influencer/:influencerId", sharedAccessMiddleware, async (req, res)
         if (!influencerId) {
             return res.status(400).json({ error: "Influencer id not provided" })
         }
-        const data = await Influencer.findOne({ customId: influencerId }).select('-encryptedPassword ').populate("createdJobs");
+        const data = await Influencer.findOne({ customId: influencerId }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api').populate("createdJobs");
 
         if (data) {
             return res.status(200).json({
@@ -109,7 +109,7 @@ router.get("/influencers", sharedAccessMiddleware, async (req, res) => {
 
         const totalPages = Math.ceil(totalCount / pageSize);
 
-        const data = await Influencer.find({}).select('-encryptedPassword ').populate("createdJobs").skip(offSet).limit(pageSize);
+        const data = await Influencer.find({}).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api ').populate("createdJobs").skip(offSet).limit(pageSize);
 
         if (data.length > 0) {
             return res.status(200).json({
@@ -172,7 +172,7 @@ router.get("/jobs", sharedAccessMiddleware, async (req, res) => {
 
         const totalPages = Math.ceil(totalCount / pageSize);
 
-        const data = await Job.find({}).select('-encryptedPassword ').skip(offSet).limit(pageSize).populate("owner");
+        const data = await Job.find({}).skip(offSet).limit(pageSize).populate("owner");
 
         if (data.length > 0) {
             return res.status(200).json({
