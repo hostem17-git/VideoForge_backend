@@ -6,6 +6,8 @@ const zod = require("zod");
 const bcrypt = require("bcrypt");
 const { validate } = require('uuid');
 const { JOB_SCHEMA_OPTIONS } = require('../config')
+const mongoose = require("mongoose")
+
 
 const router = Router();
 const emailSchema = zod.string().email();
@@ -20,6 +22,13 @@ const jobSchema = zod.object({
         )
     })
 })
+
+// only to be called after verification
+function tokenDecoder(token) {
+
+    const decodedValue = jwt.decode(token, process.env.JWT_SECRET);
+    return decodedValue;
+}
 
 
 function verifyEmail(email) {
@@ -127,12 +136,10 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
         if (!jobValidation.success) {
             return res.status(400).json({ error: jobValidation.error.errors })
         }
+        // *********************
 
-        const token = req.headers.authorization.split(" ")[1];
-
-        const decodedValue = jwt.decode(token, process.env.JWT_SECRET);
-
-        const email = decodedValue.email;
+        const decodedToken = tokenDecoder(req.headers.authorization.split(" ")[1]);
+        const email = decodedToken.email;
 
         const owner = await Influencer.findOne({ email }).select('-encryptedPassword ');
 
@@ -157,46 +164,69 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
 
 // FIXME: make sure influencer is not suspended
 // for influencers to hire freelancers
-router.post("/hireUser", influencerMiddleware, async (req, res) => {
+router.post("/hire", influencerMiddleware, async (req, res) => {
     try {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
         const { jobId, userId } = req.body;
 
         if (!jobId || !userId) {
             return res.status(400).json({ error: "Invalid inputs" });
         }
 
-        const job = await Job.findOne({ customId: jobId });
+        const job = await Job.findOne({ customId: jobId }).session(session).populate("owner");
+
 
         if (!job) {
+            await session.abortTransaction();
             return res.status(400).json({ error: "Invalid job ID" });
         }
 
+        const userEmail = tokenDecoder(req.headers.authorization.split(" ")[1]).email;
+
+        if (job.owner.email !== userEmail) {
+            await session.abortTransaction();
+            return res.status(403).json({ error: "Cannot hire to a non-owned job" })
+        }
         if (job.Stage !== "new") {
-            return res.status(400).json({ error: `Cannot hire on job which is already ${job.Stage}` })
+            await session.abortTransaction();
+            return res.status(400).json({ error: `Cannot hire on job which already ${job.Stage}` })
         }
 
         if (job.suspended) {
+            await session.abortTransaction();
             return res.status(400).json({ error: "Job not available" })
         }
 
-
-        const user = await User.findOne({ customId: userId });
+        const user = await User.findOne({ customId: userId }).session(session);
 
         if (!user) {
+            await session.abortTransaction();
             return res.status(400).json({ error: "Invalid user Id" })
         }
 
         if (user.suspended) {
+            await session.abortTransaction();
             return res.status(400).json({ error: "Cannot hire a suspended user" })
         }
 
+
+
         job.users.push(user);
+        job.Stage = "started";
         user.JobsTaken.push(job);
 
-        job.save();
-        user.save();
 
-        job.save();
+        await job.save({ session });
+        await user.save({ session });
+
+        await session.commitTransaction();
+
+        session.endSession();
+        return res.status(200).json({
+            message: "hired successfully"
+        })
     } catch (error) {
         console.log("Hire user error", error);
         res.status(500).json({ error: "Error hiring user" })

@@ -172,7 +172,7 @@ router.get("/jobs", sharedAccessMiddleware, async (req, res) => {
 
         const totalPages = Math.ceil(totalCount / pageSize);
 
-        const data = await Job.find({}).select('-encryptedPassword ').skip(offSet).limit(pageSize);
+        const data = await Job.find({}).select('-encryptedPassword ').skip(offSet).limit(pageSize).populate("owner");
 
         if (data.length > 0) {
             return res.status(200).json({

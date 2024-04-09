@@ -23,7 +23,7 @@ function sharedAccessMiddleware(req, res, next) {
             return res.status(401).json({ error: "authorization token expired" })
         }
         console.log("admin JWT verification error", error)
-        res.status(401).json({ error: "Invalid inputs" })
+        res.status(401).json({ error: "Invalid token" })
     }
 }
 
