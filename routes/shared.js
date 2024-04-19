@@ -196,19 +196,29 @@ router.get("/jobs", sharedAccessMiddleware, async (req, res) => {
 })
 
 // User validation
-router.get("/userValidation/:token", (req, res) => {
+router.get("/userValidation/", (req, res) => {
     try {
-        const token = req.params.token;
+
+        const authHeader = req.headers.authorization;
+
+        if (!authHeader || !authHeader.startsWith("Bearer")) {
+            return res.status(401).json({ error: "Authorization token missing" });
+        }
+        const token = authHeader.split(' ')[1];
+
         if (!token) {
             res.status(400).json({ error: "Token missing" });
         }
+
         const decodedValue = jwt.verify(token, process.env.JWT_SECRET);
+        
         if (decodedValue) {
             res.status(200).json({
                 userValid: true,
                 role: decodedValue.role
             })
         }
+        
         return res.status(403).json({
             userValid: true,
             error: "Unauthorized"
