@@ -81,7 +81,9 @@ router.post("/SignIn", async (req, res) => {
         )
 
         return res.status(200).json({
-            token: token
+            token: token,
+            role: "user",
+            id: user.customId
         })
 
 
