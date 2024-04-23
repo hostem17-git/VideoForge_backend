@@ -21,8 +21,8 @@ const socialSchema = zod.object({
 const jobSchema = zod.object({
     jobTitle: zod.string().min(10).max(30),
     jobDescription: zod.string().min(30),
-    startDate: zod.string().datetime(),
-    dueDate: zod.string().datetime(),
+    startDate: zod.string().date(),
+    dueDate: zod.string().date(),
     tags: zod.string().array().min(0).max(10).refine(values => {
         return values.every(value => JOB_SCHEMA_OPTIONS.includes(value)
         )
@@ -153,8 +153,10 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
     let session;
 
     try {
+        // console.log(req)
         const { jobTitle, jobDescription, startDate, dueDate, tags } = req.body;
 
+        console.log(jobTitle, jobDescription, startDate, dueDate, tags)
         if (!jobTitle || !jobDescription || !startDate || !dueDate) {
             return res.status(400).json({ error: "missing inputs" });
         }
@@ -204,9 +206,10 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
 
         session.endSession();
 
+
         res.status(200).json({
             message: "Job created",
-            id: job._id
+            job: job[0].customId
         })
     } catch (error) {
         console.log("Influencer Job creation error", error);
@@ -419,19 +422,28 @@ router.put("/updateSocials", influencerMiddleware, async (req, res) => {
 
         if (Youtube) {
             influencer.Youtube = Youtube.trim();
-            influencer.Youtube_api = Youtube_api ? Youtube_api.trim() : undefined;
+        }
+
+        if (Youtube_api && Youtube_api.trim() !== "") {
+            influencer.Youtube_api = Youtube_api.trim()
         }
 
         if (Instagram) {
             influencer.Instagram = Instagram.trim();
-            influencer.Instagram_api = Instagram_api ? Instagram_api.trim() : undefined;
+        }
+
+        if (Instagram_api && Instagram_api.trim() !== "") {
+            influencer.Instagram_api = Instagram_api.trim()
         }
 
         if (Facebook) {
             influencer.Facebook = Facebook.trim();
-            influencer.Facebook_api = Facebook_api ? Facebook_api.trim() : undefined;
         }
 
+        if (Facebook_api && Facebook_api.trim() !== "") {
+            influencer.Facebook_api = Facebook_api.trim()
+
+        }
         await influencer.save();
 
         session.commitTransaction();
