@@ -173,7 +173,7 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
 
         const decodedToken = tokenDecoder(req.headers.authorization.split(" ")[1]);
         const email = decodedToken.email;
-        
+
 
         const owner = await Influencer.findOne({ email: email.trim() }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api');
 
@@ -479,7 +479,7 @@ router.get("/myjobs", influencerMiddleware, async (req, res) => {
 
         const jobs = await Job.find({ owner: influencerId }).skip(offSet).limit(pageSize).sort({ CreatedDate: -1 });
 
-  
+
 
         res.status(200).json(
             {
@@ -491,7 +491,7 @@ router.get("/myjobs", influencerMiddleware, async (req, res) => {
             }
         );
     } catch (error) {
-        console.log("Error Fetching my jobs for influencer",error)
+        console.log("Error Fetching my jobs for influencer", error)
         res.status(500).json({
             error: error
         })

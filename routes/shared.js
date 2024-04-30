@@ -142,7 +142,7 @@ router.get("/job/:jobId", sharedAccessMiddleware, async (req, res) => {
         if (!jobId) {
             return res.status(400).json({ error: "Job id not provided" })
         }
-        const data = await Job.findOne({ jobId }).populate("owner users");
+        const data = await Job.findOne({ jobId });
 
         if (data) {
             return res.status(200).json({
@@ -175,7 +175,7 @@ router.get("/jobs", sharedAccessMiddleware, async (req, res) => {
 
         const totalPages = Math.ceil(totalCount / pageSize);
 
-        const data = await Job.find({}).skip(offSet).limit(pageSize).populate("owner").sort({ CreatedDate: -1 });
+        const data = await Job.find({}).skip(offSet).limit(pageSize);
 
         if (data.length > 0) {
             return res.status(200).json({
