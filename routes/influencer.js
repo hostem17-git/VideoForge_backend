@@ -475,7 +475,7 @@ router.get("/myjobs", influencerMiddleware, async (req, res) => {
         const influencerId = influencer._id;
 
         const page = parseInt(req.query.page) || 1;
-        const pageSize = parseInt(req.query.pageSize) || 10;
+        const pageSize = parseInt(req.query.pageSize) || 25;
         const offSet = (page - 1) * pageSize;
         const totalCount = await Job.countDocuments({ owner: influencerId });
         const totalPages = Math.ceil(totalCount / pageSize);
@@ -497,11 +497,11 @@ router.get("/myjobs", influencerMiddleware, async (req, res) => {
     } catch (error) {
         console.log(error)
         res.status(400).json({
-            error:error
+            error: error
         })
     }
 
-  
+
 })
 
 module.exports = router;

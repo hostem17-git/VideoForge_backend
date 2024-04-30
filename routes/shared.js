@@ -38,7 +38,7 @@ router.get("/users", sharedAccessMiddleware, async (req, res) => {
 
     try {
         const page = parseInt(req.query.page) || 1;
-        const pageSize = parseInt(req.query.pageSize) || 10;
+        const pageSize = parseInt(req.query.pageSize) || 25;
 
         const offSet = (page - 1) * pageSize;
 
@@ -78,7 +78,7 @@ router.get("/influencer/:influencerId", sharedAccessMiddleware, async (req, res)
         if (!influencerId) {
             return res.status(400).json({ error: "Influencer id not provided" })
         }
-        
+
         const data = await Influencer.findOne({ customId: influencerId }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api -createdJobs');
 
         if (data) {
@@ -103,7 +103,7 @@ router.get("/influencer/:influencerId", sharedAccessMiddleware, async (req, res)
 router.get("/influencers", sharedAccessMiddleware, async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const pageSize = parseInt(req.query.pageSize) || 10;
+        const pageSize = parseInt(req.query.pageSize) || 25;
 
         const offSet = (page - 1) * pageSize;
 
@@ -136,7 +136,7 @@ router.get("/influencers", sharedAccessMiddleware, async (req, res) => {
 
 // TODO: test populate 
 // To get specific job
-    router.get("/job/:jobId", sharedAccessMiddleware, async (req, res) => {
+router.get("/job/:jobId", sharedAccessMiddleware, async (req, res) => {
     try {
         const jobId = req.params.jobId;
         if (!jobId) {
@@ -167,7 +167,7 @@ router.get("/influencers", sharedAccessMiddleware, async (req, res) => {
 router.get("/jobs", sharedAccessMiddleware, async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const pageSize = parseInt(req.query.pageSize) || 10;
+        const pageSize = parseInt(req.query.pageSize) || 25;
 
         const offSet = (page - 1) * pageSize;
 
