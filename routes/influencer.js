@@ -151,12 +151,9 @@ router.post("/reset-password", async (req, res) => {
 // To create a new job
 router.post("/createjob", influencerMiddleware, async (req, res) => {
     let session;
-
     try {
-        // console.log(req)
         const { jobTitle, jobDescription, startDate, dueDate, tags } = req.body;
 
-        console.log(jobTitle, jobDescription, startDate, dueDate, tags)
         if (!jobTitle || !jobDescription || !startDate || !dueDate) {
             return res.status(400).json({ error: "missing inputs" });
         }
@@ -176,10 +173,11 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
 
         const decodedToken = tokenDecoder(req.headers.authorization.split(" ")[1]);
         const email = decodedToken.email;
+        
 
         const owner = await Influencer.findOne({ email: email.trim() }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api');
 
-        const influencer = res.locals.influencerDocument;
+        // const influencer = res.locals.influencerDocument;
         session = await mongoose.startSession();
 
         if (!session) {
@@ -198,9 +196,9 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
         }], { session });
 
 
-        influencer.createdJobs.push(job[0]);
+        owner.createdJobs.push(job[0]);
 
-        await influencer.save({ session });
+        await owner.save({ session });
 
         await session.commitTransaction();
 
@@ -470,7 +468,6 @@ router.put("/updateSocials", influencerMiddleware, async (req, res) => {
 
 router.get("/myjobs", influencerMiddleware, async (req, res) => {
     try {
-        console.log("in")
         const influencer = res.locals.influencerDocument;
         const influencerId = influencer._id;
 
@@ -482,8 +479,7 @@ router.get("/myjobs", influencerMiddleware, async (req, res) => {
 
         const jobs = await Job.find({ owner: influencerId }).skip(offSet).limit(pageSize).sort({ CreatedDate: -1 });
 
-        console.log(totalCount)
-        console.log(jobs)
+  
 
         res.status(200).json(
             {
@@ -495,8 +491,8 @@ router.get("/myjobs", influencerMiddleware, async (req, res) => {
             }
         );
     } catch (error) {
-        console.log(error)
-        res.status(400).json({
+        console.log("Error Fetching my jobs for influencer",error)
+        res.status(500).json({
             error: error
         })
     }
