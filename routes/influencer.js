@@ -480,7 +480,7 @@ router.get("/myjobs", influencerMiddleware, async (req, res) => {
         const totalCount = await Job.countDocuments({ owner: influencerId });
         const totalPages = Math.ceil(totalCount / pageSize);
 
-        const jobs = await Job.find({ owner: influencerId }).skip(offSet).limit(pageSize);
+        const jobs = await Job.find({ owner: influencerId }).skip(offSet).limit(pageSize).sort({ CreatedDate: -1 });
 
         console.log(totalCount)
         console.log(jobs)

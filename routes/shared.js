@@ -175,7 +175,7 @@ router.get("/jobs", sharedAccessMiddleware, async (req, res) => {
 
         const totalPages = Math.ceil(totalCount / pageSize);
 
-        const data = await Job.find({}).skip(offSet).limit(pageSize).populate("owner");
+        const data = await Job.find({}).skip(offSet).limit(pageSize).populate("owner").sort({ CreatedDate: -1 });
 
         if (data.length > 0) {
             return res.status(200).json({
