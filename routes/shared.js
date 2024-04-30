@@ -78,7 +78,8 @@ router.get("/influencer/:influencerId", sharedAccessMiddleware, async (req, res)
         if (!influencerId) {
             return res.status(400).json({ error: "Influencer id not provided" })
         }
-        const data = await Influencer.findOne({ customId: influencerId }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api').populate("createdJobs");
+        
+        const data = await Influencer.findOne({ customId: influencerId }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api -createdJobs');
 
         if (data) {
             return res.status(200).json({
@@ -110,7 +111,7 @@ router.get("/influencers", sharedAccessMiddleware, async (req, res) => {
 
         const totalPages = Math.ceil(totalCount / pageSize);
 
-        const data = await Influencer.find({}).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api ').populate("createdJobs").skip(offSet).limit(pageSize);
+        const data = await Influencer.find({}).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api -createdJobs').skip(offSet).limit(pageSize);
 
         if (data.length > 0) {
             return res.status(200).json({
@@ -135,7 +136,7 @@ router.get("/influencers", sharedAccessMiddleware, async (req, res) => {
 
 // TODO: test populate 
 // To get specific job
-router.get("/job/:jobId", sharedAccessMiddleware, async (req, res) => {
+    router.get("/job/:jobId", sharedAccessMiddleware, async (req, res) => {
     try {
         const jobId = req.params.jobId;
         if (!jobId) {
@@ -160,6 +161,7 @@ router.get("/job/:jobId", sharedAccessMiddleware, async (req, res) => {
     }
 });
 
+// TODO: Test if populate owner provides confidential data too
 // TODO: test populate
 //  Get all jobs
 router.get("/jobs", sharedAccessMiddleware, async (req, res) => {
@@ -212,14 +214,14 @@ router.get("/userValidation/", (req, res) => {
         }
 
         const decodedValue = jwt.verify(token, process.env.JWT_SECRET);
-        
+
         if (decodedValue) {
             res.status(200).json({
                 userValid: true,
                 role: decodedValue.role
             })
         }
-        
+
         return res.status(403).json({
             userValid: true,
             error: "Unauthorized"

@@ -3,7 +3,6 @@ const { Influencer } = require("../db");
 
 async function influencerMiddleware(req, res, next) {
     const authHeader = req.headers.authorization;
-
     if (!authHeader || !authHeader.startsWith("Bearer")) {
         return res.status(401).json({ error: "Authorization token missing" });
     }
@@ -12,7 +11,7 @@ async function influencerMiddleware(req, res, next) {
     try {
         const decodedValue = jwt.verify(token, process.env.JWT_SECRET);
         if (decodedValue && decodedValue.role === "influencer") {
-            const influencer = await Influencer.findOne({ email: decodedValue.email }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api')
+            const influencer = await Influencer.findOne({ email: decodedValue.email }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api -createdJobs')
             if (!influencer.suspended) {
                 res.locals.influencerDocument = influencer;
                 return next();

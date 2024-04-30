@@ -468,4 +468,40 @@ router.put("/updateSocials", influencerMiddleware, async (req, res) => {
 });
 
 
+router.get("/myjobs", influencerMiddleware, async (req, res) => {
+    try {
+        console.log("in")
+        const influencer = res.locals.influencerDocument;
+        const influencerId = influencer._id;
+
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 10;
+        const offSet = (page - 1) * pageSize;
+        const totalCount = await Job.countDocuments({ owner: influencerId });
+        const totalPages = Math.ceil(totalCount / pageSize);
+
+        const jobs = await Job.find({ owner: influencerId }).skip(offSet).limit(pageSize);
+
+        console.log(totalCount)
+        console.log(jobs)
+
+        res.status(200).json(
+            {
+                page,
+                pageSize,
+                totalCount,
+                totalPages,
+                jobs
+            }
+        );
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            error:error
+        })
+    }
+
+  
+})
+
 module.exports = router;
