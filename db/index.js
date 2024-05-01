@@ -117,7 +117,7 @@ const JobSchema = new mongoose.Schema({
         ref: 'User'
     }],
     rawfiles: [String],
-    EditedFiles: [String],
+    editedFiles: [String],
     finalFiles: [String],
     JobTitle: {
         type: String,
