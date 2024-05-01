@@ -301,9 +301,10 @@ router.put("/hire", influencerMiddleware, async (req, res) => {
 // To close job
 // TODO: Add option to select close type - "Withdrawan","Completed"
 router.put("/closejob", influencerMiddleware, async (req, res) => {
+    // console.log("in close joib")
     let session;
     try {
-        const { jobId, closeReason } = req.body;
+        const { jobId } = req.body;
 
         if (!jobId) {
             await session.abortTransaction();
@@ -338,7 +339,6 @@ router.put("/closejob", influencerMiddleware, async (req, res) => {
         session.startTransaction();
 
         job.Stage = "closed";
-        job.CloseReason = closeReason.trim();
         job.ClosedDate = new Date().toISOString();
         await job.save({ session });
 
