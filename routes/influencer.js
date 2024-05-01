@@ -270,8 +270,9 @@ router.put("/hire", influencerMiddleware, async (req, res) => {
         session = await mongoose.startSession();
         session.startTransaction();
 
-        job.users.push(user);
+        job.user = user;
         job.Stage = "started";
+        
         user.JobsTaken.push(job);
 
         await job.save({ session });

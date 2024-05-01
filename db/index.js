@@ -112,10 +112,10 @@ const JobSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Influencer'
     },
-    users: [{
+    user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
-    }],
+    },
     rawfiles: [String],
     editedFiles: [String],
     finalFiles: [String],
