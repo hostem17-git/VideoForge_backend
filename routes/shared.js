@@ -142,7 +142,7 @@ router.get("/job/:jobId", sharedAccessMiddleware, async (req, res) => {
         if (!jobId) {
             return res.status(400).json({ error: "Job id not provided" })
         }
-        const data = await Job.findOne({ customId: jobId });
+        const data = await Job.findOne({ customId: jobId }).populate("users", "username");
 
         if (data) {
             return res.status(200).json({
