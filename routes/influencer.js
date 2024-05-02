@@ -466,6 +466,39 @@ router.put("/updateSocials", influencerMiddleware, async (req, res) => {
     }
 });
 
+// TODO: test populate 
+
+// To get specific job
+// Moved it from shared route because this also fetches potentially confidential data such as raw files, final files, etc.
+router.get("/job/:jobId", influencerMiddleware, async (req, res) => {
+    try {
+        const influencer = res.locals.influencerDocument;
+        const influencerId = influencer._id;
+
+        const jobId = req.params.jobId;
+        if (!jobId) {
+            return res.status(400).json({ error: "Job id not provided" })
+        }
+
+        const data = await Job.findOne({ customId: jobId, owner: influencerId }).populate("users", "username").populate("owner", "username");
+
+        if (data) {
+            return res.status(200).json({
+                data: data
+            })
+        }
+        else {
+            return res.status(404).json({
+                message: "Job not found"
+            })
+        }
+    }
+    catch (error) {
+        console.log("influencer get Job error", error)
+        res.status(500).json({ error: "Unable to fetch Job" });
+    }
+});
+
 
 router.get("/myjobs", influencerMiddleware, async (req, res) => {
     try {
@@ -479,8 +512,6 @@ router.get("/myjobs", influencerMiddleware, async (req, res) => {
         const totalPages = Math.ceil(totalCount / pageSize);
 
         const jobs = await Job.find({ owner: influencerId }).skip(offSet).limit(pageSize).sort({ CreatedDate: -1 });
-
-
 
         res.status(200).json(
             {
@@ -500,5 +531,36 @@ router.get("/myjobs", influencerMiddleware, async (req, res) => {
 
 
 })
+
+// To get my id along with my keys
+router.get("/myId", influencerMiddleware, async (req, res) => {
+    try {
+
+        const influencer = res.locals.influencerDocument;
+        const influencerId = influencer.customId;
+
+        if (!influencerId) {
+            return res.status(400).json({ error: "Influencer id not available" })
+        }
+
+        const data = await Influencer.findOne({ customId: influencerId }).select('-encryptedPassword -createdJobs');
+
+        if (data) {
+            return res.status(200).json({
+                data: data
+            })
+        }
+        else {
+            return res.status(404).json({
+                message: "Influencer not found"
+            })
+        }
+    }
+
+    catch (error) {
+        console.log("fetch influencer profile error", error)
+        res.status(500).json({ error: "Unable to fetch influencer" });
+    }
+});
 
 module.exports = router;

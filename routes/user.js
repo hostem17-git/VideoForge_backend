@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const userMiddleware = require('../middleware/user');
-const { User } = require('../db/index');
+const { User, Job } = require('../db/index');
 const jwt = require("jsonwebtoken");
 const zod = require("zod");
 const bcrypt = require("bcrypt");
@@ -177,6 +177,119 @@ router.put("/updateSocials", userMiddleware, async (req, res) => {
         }
     }
 });
+
+
+// To get specific that has been assinged to user 
+router.get("/job/:jobId", userMiddleware, async (req, res) => {
+    try {
+        const user = res.locals.userDocument;
+        const userId = user._id;
+        const jobId = req.params.jobId;
+
+        if (!jobId) {
+            return res.status(400).json({ error: "Job id not provided" })
+        }
+        const data = await Job.findOne({ customId: jobId, users: { $in: [userId] } }).populate("users", "username").populate("owner", "username");
+
+        if (data) {
+            return res.status(200).json({
+                data: data
+            })
+        }
+
+        else {
+            return res.status(404).json({
+                message: "Job not found"
+            })
+        }
+    }
+    catch (error) {
+        console.log("user get Job error", error)
+        res.status(500).json({ error: "Unable to fetch Job" });
+    }
+});
+
+// To get all assinged Jobs
+router.get("/myjobs/:stage?", userMiddleware, async (req, res) => {
+    try {
+        const user = res.locals.userDocument;
+        const userId = user._id;
+        const stage = req.params.stage;
+
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 25;
+
+        const offSet = (page - 1) * pageSize;
+
+        const totalCount = await Job.countDocuments();
+
+        const totalPages = Math.ceil(totalCount / pageSize);
+
+        const query = { users: { $in: [userId] } };
+
+
+        if (stage) {
+            query.Stage = stage
+        };
+
+        const data = await Job.find({ query }).skip(offSet).limit(pageSize).populate('owner').select("-rawfiles -editedFiles -EditedFiles -finalFiles").sort({ CreatedDate: -1 });
+
+        console.log("query", query);
+
+        if (data.length > 0) {
+            return res.status(200).json({
+                page,
+                pageSize,
+                totalCount,
+                totalPages,
+                data
+            })
+        }
+        else {
+            return res.status(404).json({
+                message: "No Jobs found"
+            })
+        }
+    }
+    catch (error) {
+        console.log("user* get all jobs error", error)
+        res.status(500).json({ error: "Unable to fetch jobs" });
+    }
+})
+
+// router.get("/myJobs", userMiddleware, async (req, res) => {
+//     try {
+//         const user = res.locals.userDocument;
+//         const userId = user._id;
+//         const page = parseInt(req.query.page) || 1;
+//         const pageSize = parseInt(req.query.pageSize) || 25;
+//         const offSet = (page - 1) * pageSize;
+//         const totalCount = await Job.countDocuments({ owner: influencerId });
+//         const totalPages = Math.ceil(totalCount / pageSize);
+
+//         // const jobs = await Job.find({ owner: influencerId }).skip(offSet).limit(pageSize).sort({ CreatedDate: -1 });
+
+//         const jobs = await Job.find({ users: { $in: [userId] } }).populate('owner', 'username email').select("-rawfiles -editedFiles -EditedFiles -finalFiles")
+
+
+//         res.status(200).json(
+//             {
+//                 page,
+//                 pageSize,
+//                 totalCount,
+//                 totalPages,
+//                 jobs
+//             }
+//         );
+//     } catch (error) {
+//         console.log("Error Fetching my jobs for influencer", error)
+//         res.status(500).json({
+//             error: error
+//         })
+//     }
+
+
+// })
 
 
 module.exports = router;

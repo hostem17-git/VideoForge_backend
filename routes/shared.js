@@ -45,7 +45,7 @@ router.get("/users", sharedAccessMiddleware, async (req, res) => {
         const totalCount = await User.countDocuments();
         const totalPages = Math.ceil(totalCount / pageSize);
 
-        const data = await User.find({}).select('-encryptedPassword ').populate("JobsTaken").skip(offSet).limit(pageSize);
+        const data = await User.find({}).select('-encryptedPassword ').skip(offSet).limit(pageSize);
 
         if (data.length > 0) {
             return res.status(200).json({
@@ -134,33 +134,6 @@ router.get("/influencers", sharedAccessMiddleware, async (req, res) => {
     }
 })
 
-// TODO: test populate 
-// To get specific job
-router.get("/job/:jobId", sharedAccessMiddleware, async (req, res) => {
-    try {
-        const jobId = req.params.jobId;
-        if (!jobId) {
-            return res.status(400).json({ error: "Job id not provided" })
-        }
-        const data = await Job.findOne({ customId: jobId }).populate("users", "username").populate("owner", "username");
-
-        if (data) {
-            return res.status(200).json({
-                data: data
-            })
-        }
-        else {
-            return res.status(404).json({
-                message: "Job not found"
-            })
-        }
-    }
-    catch (error) {
-        console.log("shared get Job error", error)
-        res.status(500).json({ error: "Unable to fetch Job" });
-    }
-});
-
 // TODO: Test if populate owner provides confidential data too
 // TODO: test populate
 //  Get all jobs
@@ -181,7 +154,7 @@ router.get("/jobs/:stage?", sharedAccessMiddleware, async (req, res) => {
         const query = {};
 
 
-        if(stage) {
+        if (stage) {
             query.Stage = stage
         };
 
