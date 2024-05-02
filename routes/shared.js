@@ -142,7 +142,7 @@ router.get("/job/:jobId", sharedAccessMiddleware, async (req, res) => {
         if (!jobId) {
             return res.status(400).json({ error: "Job id not provided" })
         }
-        const data = await Job.findOne({ customId: jobId }).populate("users", "username");
+        const data = await Job.findOne({ customId: jobId }).populate("users", "username").populate("owner", "username");
 
         if (data) {
             return res.status(200).json({
@@ -164,8 +164,11 @@ router.get("/job/:jobId", sharedAccessMiddleware, async (req, res) => {
 // TODO: Test if populate owner provides confidential data too
 // TODO: test populate
 //  Get all jobs
-router.get("/jobs", sharedAccessMiddleware, async (req, res) => {
+router.get("/jobs/:stage?", sharedAccessMiddleware, async (req, res) => {
     try {
+        console.log("in get jobs")
+        const stage = req.params.stage;
+
         const page = parseInt(req.query.page) || 1;
         const pageSize = parseInt(req.query.pageSize) || 25;
 
@@ -175,7 +178,15 @@ router.get("/jobs", sharedAccessMiddleware, async (req, res) => {
 
         const totalPages = Math.ceil(totalCount / pageSize);
 
-        const data = await Job.find({}).skip(offSet).limit(pageSize).select('-rawfiles -editedFiles -EditedFiles -finalFiles').sort({ CreatedDate: -1 });
+        const query = {};
+
+
+        if(stage) {
+            query.Stage = stage
+        };
+
+        console.log("query", query);
+        const data = await Job.find(query).skip(offSet).limit(pageSize).select('-rawfiles -editedFiles -EditedFiles -finalFiles').sort({ CreatedDate: -1 });
 
         if (data.length > 0) {
             return res.status(200).json({
