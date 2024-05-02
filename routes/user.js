@@ -180,7 +180,7 @@ router.put("/updateSocials", userMiddleware, async (req, res) => {
 
 
 // To get specific that has been assinged to user 
-router.get("/job/:jobId", userMiddleware, async (req, res) => {
+router.get("/myjob/:jobId", userMiddleware, async (req, res) => {
     try {
         const user = res.locals.userDocument;
         const userId = user._id;
@@ -252,7 +252,7 @@ router.get("/myjobs/:stage?", userMiddleware, async (req, res) => {
         }
     }
     catch (error) {
-        console.log("user* get all jobs error", error)
+        console.log("user get all jobs error", error)
         res.status(500).json({ error: "Unable to fetch jobs" });
     }
 })

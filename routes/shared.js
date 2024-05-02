@@ -219,5 +219,34 @@ router.get("/userValidation/", (req, res) => {
     }
 })
 
+router.get("/job/:jobId", sharedAccessMiddleware, async (req, res) => {
+    console.log("in shared job")
+    try {
+
+        const jobId = req.params.jobId;
+
+        if (!jobId) {
+            return res.status(400).json({ error: "Job id not provided" })
+        }
+        const data = await Job.findOne({ customId: jobId }).select("-rawfiles -editedFiles -EditedFiles -finalFiles").populate("users", "username").populate("owner", "username");
+
+        if (data) {
+            return res.status(200).json({
+                data: data
+            })
+        }
+
+        else {
+            return res.status(404).json({
+                message: "Job not found"
+            })
+        }
+    }
+    catch (error) {
+        console.log("user get Job error", error)
+        res.status(500).json({ error: "Unable to fetch Job" });
+    }
+});
+
 
 module.exports = router;
