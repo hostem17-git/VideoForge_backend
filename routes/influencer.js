@@ -322,7 +322,7 @@ router.put("/closejob", influencerMiddleware, async (req, res) => {
 
         if (job.owner.email !== influencerMail) {
             await session.abortTransaction();
-            return res.status(403).json({ error: "Cannot close a non-owned job" })
+            return res.status(403).json({ error: "Your are not owner of this job" })
         }
 
         if (job.suspended) {
