@@ -214,6 +214,7 @@ router.get("/myjobs/:stage?", userMiddleware, async (req, res) => {
     try {
         const user = res.locals.userDocument;
         const userId = user._id;
+
         const stage = req.params.stage;
 
         const page = parseInt(req.query.page) || 1;
@@ -232,9 +233,7 @@ router.get("/myjobs/:stage?", userMiddleware, async (req, res) => {
             query.Stage = stage
         };
 
-        const data = await Job.find({ query }).skip(offSet).limit(pageSize).populate('owner').select("-rawfiles -editedFiles -EditedFiles -finalFiles").sort({ CreatedDate: -1 });
-
-        console.log("query", query);
+        const data = await Job.find( query ).skip(offSet).limit(pageSize).populate('owner').select("-rawfiles -editedFiles -EditedFiles -finalFiles").sort({ CreatedDate: -1 });
 
         if (data.length > 0) {
             return res.status(200).json({
@@ -246,6 +245,7 @@ router.get("/myjobs/:stage?", userMiddleware, async (req, res) => {
             })
         }
         else {
+
             return res.status(404).json({
                 message: "No Jobs found"
             })
