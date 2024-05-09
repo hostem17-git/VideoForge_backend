@@ -75,7 +75,7 @@ router.post("/SignIn", async (req, res) => {
 
         if (!admin) {
             return res.status(401).json({
-                message: "Incorrect credentials"
+                message: "user not found"
             })
         }
 
@@ -89,7 +89,7 @@ router.post("/SignIn", async (req, res) => {
 
         if (!match) {
             return res.status(401).json({
-                message: "Incorrect credentials"
+                message: "Incorrect password"
             })
         }
 

@@ -54,7 +54,7 @@ router.post("/SignIn", async (req, res) => {
 
         if (!user) {
             return res.status(401).json({
-                message: "Incorrect credentials"
+                message: "user not found"
             })
         }
 
@@ -69,7 +69,7 @@ router.post("/SignIn", async (req, res) => {
 
         if (!match) {
             return res.status(401).json({
-                message: "Incorrect credentials"
+                message: "Incorrect password"
             })
         }
 
@@ -233,7 +233,7 @@ router.get("/myjobs/:stage?", userMiddleware, async (req, res) => {
             query.Stage = stage
         };
 
-        const data = await Job.find( query ).skip(offSet).limit(pageSize).populate('owner').select("-rawfiles -editedFiles -EditedFiles -finalFiles").sort({ CreatedDate: -1 });
+        const data = await Job.find(query).skip(offSet).limit(pageSize).populate('owner').select("-rawfiles -editedFiles -EditedFiles -finalFiles").sort({ CreatedDate: -1 });
 
         if (data.length > 0) {
             return res.status(200).json({

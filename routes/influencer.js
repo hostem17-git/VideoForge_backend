@@ -8,9 +8,22 @@ const { validate } = require('uuid');
 const { JOB_SCHEMA_OPTIONS } = require('../config')
 const mongoose = require("mongoose");
 const { route } = require('./admin');
+const { S3Client, PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3")
 
+const cuid = require("cuid");
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 const router = Router();
+
+const client = new S3Client({
+    region: 'ap-south-1',
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY,
+        secretAccessKey: process.env.AWS_SECRET_KEY
+    }
+})
+
+
 const emailSchema = zod.string().email();
 
 const socialSchema = zod.object({
@@ -104,7 +117,7 @@ router.post("/SignIn", async (req, res) => {
 
         if (!influencer) {
             return res.status(401).json({
-                message: "Incorrect credentials"
+                message: "user not found"
             })
         }
 
@@ -119,7 +132,7 @@ router.post("/SignIn", async (req, res) => {
 
         if (!match) {
             return res.status(401).json({
-                message: "Incorrect credentials"
+                message: "Incorrect password"
             })
         }
 
@@ -562,5 +575,34 @@ router.get("/myId", influencerMiddleware, async (req, res) => {
         res.status(500).json({ error: "Unable to fetch influencer" });
     }
 });
+
+// to get presigned url to upload raw files
+router.get("/uploadPreSigner", influencerMiddleware, async (req, res) => {
+    try {
+        const { fileName, fileExtension, jobId } = req.body;
+
+        const influencer = res.locals.influencerDocument;
+        const influencerId = influencer.customId;
+
+        const url = await getSignedUrl(client,
+            new PutObjectCommand({
+                Bucket: process.env.AWS_BUCKET,
+                Key: `${influencerId}/${jobId}/${fileName}-${cuid()}.${fileExtension}`,
+                Metadata: {
+                    type: `application/${fileExtension}`
+
+                }
+            }),
+            { expiresIn: 60 * 5 } // expires in 5 minutes
+        )
+        res.status(200).json({
+            url,
+            key: `${influencerId}/${jobId}/${fileName}-${cuid()}.${fileExtension}`
+        })
+    } catch (error) {
+        console.log("Influencer get uploadePreSigner Error", error);
+        res.status(500).json({ error: error })
+    }
+})
 
 module.exports = router;
