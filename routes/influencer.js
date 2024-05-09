@@ -88,7 +88,7 @@ router.post("/Signup", async (req, res) => {
         res.status(200).json({ message: "Influencer created successfully" })
     } catch (error) {
         if (error.code == 11000) {
-            res.status(409).json({ message: "Email already exists" })
+            res.status(409).json({ error: "Email already exists" })
         } else {
             console.error("Error signing up influencer:", error);
             res.status(500).json({ error: "Internal server error" });
@@ -117,7 +117,7 @@ router.post("/SignIn", async (req, res) => {
 
         if (!influencer) {
             return res.status(401).json({
-                message: "user not found"
+                error: "user not found"
             })
         }
 
@@ -132,7 +132,7 @@ router.post("/SignIn", async (req, res) => {
 
         if (!match) {
             return res.status(401).json({
-                message: "Incorrect password"
+                error: "Incorrect password"
             })
         }
 
@@ -501,7 +501,7 @@ router.get("/job/:jobId", influencerMiddleware, async (req, res) => {
         }
         else {
             return res.status(404).json({
-                message: "Job not found"
+                error: "Job not found"
             })
         }
     }
@@ -564,7 +564,7 @@ router.get("/myId", influencerMiddleware, async (req, res) => {
         }
         else {
             return res.status(404).json({
-                message: "Influencer not found"
+                error: "Influencer not found"
             })
         }
     }

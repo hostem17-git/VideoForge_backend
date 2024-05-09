@@ -36,7 +36,7 @@ router.post("/Signup", async (req, res) => {
         res.status(200).json({ message: "User created successfully" })
     } catch (error) {
         if (error.code == 11000) {
-            res.status(409).json({ message: "Email already exists" })
+            res.status(409).json({ error: "Email already exists" })
         } else {
             console.error("Error signing up User:", error);
             res.status(500).json({ error: "Internal server error" });
@@ -54,7 +54,7 @@ router.post("/SignIn", async (req, res) => {
 
         if (!user) {
             return res.status(401).json({
-                message: "user not found"
+                error: "user not found"
             })
         }
 
@@ -69,7 +69,7 @@ router.post("/SignIn", async (req, res) => {
 
         if (!match) {
             return res.status(401).json({
-                message: "Incorrect password"
+                error: "Incorrect password"
             })
         }
 
@@ -199,7 +199,7 @@ router.get("/myjob/:jobId", userMiddleware, async (req, res) => {
 
         else {
             return res.status(404).json({
-                message: "Job not found"
+                error: "Job not found"
             })
         }
     }
@@ -247,7 +247,7 @@ router.get("/myjobs/:stage?", userMiddleware, async (req, res) => {
         else {
 
             return res.status(404).json({
-                message: "No Jobs found"
+                error: "No Jobs found"
             })
         }
     }

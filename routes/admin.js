@@ -44,7 +44,7 @@ router.post("/Signup", async (req, res) => {
         res.status(200).json({ message: "Admin created successfully" })
     } catch (error) {
         if (error.code == 11000) {
-            res.status(409).json({ message: "Email already exists" })
+            res.status(409).json({ error: "Email already exists" })
 
         } else {
             console.error("Error signing up admin:", error);
@@ -75,7 +75,7 @@ router.post("/SignIn", async (req, res) => {
 
         if (!admin) {
             return res.status(401).json({
-                message: "user not found"
+                error: "user not found"
             })
         }
 
@@ -89,7 +89,7 @@ router.post("/SignIn", async (req, res) => {
 
         if (!match) {
             return res.status(401).json({
-                message: "Incorrect password"
+                error: "Incorrect password"
             })
         }
 
@@ -130,7 +130,7 @@ router.get("/admin/:adminId", adminMiddleware, async (req, res) => {
         }
         else {
             return res.status(404).json({
-                message: "Admin not found"
+                error: "Admin not found"
             })
         }
     }
@@ -153,7 +153,7 @@ router.get("/admins", adminMiddleware, async (req, res) => {
         }
         else {
             return res.status(404).json({
-                message: "No Admins found"
+                error: "No Admins found"
             })
         }
     }
@@ -171,12 +171,12 @@ router.put("/suspend/:type", adminMiddleware, async (req, res) => {
         const type = req.params.type;
 
         if (!type) {
-            return res.status(400).json({ message: "incorret path" })
+            return res.status(400).json({ error: "incorret path" })
 
         }
 
         if (!(type.trim() === "user" || type.trim() === "influencer" || type.trim() === "job" || type.trim() === "admin")) {
-            return res.status(400).json({ message: "incorret path" })
+            return res.status(400).json({ error: "incorret path" })
         }
 
         const { userId, reason } = req.body;
@@ -205,7 +205,7 @@ router.put("/suspend/:type", adminMiddleware, async (req, res) => {
 
         if (!entity) {
             return res.status(404).json({
-                message: `${type} not found`
+                error: `${type} not found`
             })
         }
 
@@ -255,12 +255,12 @@ router.put("/reinstate/:type", adminMiddleware, async (req, res) => {
         const type = req.params.type;
 
         if (!type) {
-            return res.status(400).json({ message: "incorret path" })
+            return res.status(400).json({ error: "incorret path" })
 
         }
 
         if (!(type.trim() === "user" || type.trim() === "influencer" || type.trim() === "job" || type.trim() === "admin")) {
-            return res.status(400).json({ message: "incorret path" })
+            return res.status(400).json({ error: "incorret path" })
         }
 
         const { userId } = req.body;
@@ -289,12 +289,12 @@ router.put("/reinstate/:type", adminMiddleware, async (req, res) => {
 
         if (!entity) {
             return res.status(404).json({
-                message: `${type} not found`
+                error: `${type} not found`
             })
         }
 
         if (!entity.suspended) {
-            return res.status(400).json({ message: `${type} not suspended,cannot reinstate` })
+            return res.status(400).json({ error: `${type} not suspended,cannot reinstate` })
         }
 
         session = await mongoose.startSession();

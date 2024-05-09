@@ -22,7 +22,7 @@ router.get("/user/:userId", sharedAccessMiddleware, async (req, res) => {
         }
         else {
             return res.status(404).json({
-                message: "User not found"
+                error: "User not found"
             })
         }
     }
@@ -59,7 +59,7 @@ router.get("/users", sharedAccessMiddleware, async (req, res) => {
         }
         else {
             return res.status(404).json({
-                message: "No users found"
+                error: "No users found"
             })
         }
     }
@@ -88,7 +88,7 @@ router.get("/influencer/:influencerId", sharedAccessMiddleware, async (req, res)
         }
         else {
             return res.status(404).json({
-                message: "Influencer not found"
+                error: "Influencer not found"
             })
         }
     }
@@ -124,7 +124,7 @@ router.get("/influencers", sharedAccessMiddleware, async (req, res) => {
         }
         else {
             return res.status(404).json({
-                message: "No influencers found"
+                error: "No influencers found"
             })
         }
     }
@@ -172,7 +172,7 @@ router.get("/jobs/:stage?", sharedAccessMiddleware, async (req, res) => {
         }
         else {
             return res.status(404).json({
-                message: "No Jobs found"
+                error: "No Jobs found"
             })
         }
     }
@@ -238,7 +238,7 @@ router.get("/job/:jobId", sharedAccessMiddleware, async (req, res) => {
 
         else {
             return res.status(404).json({
-                message: "Job not found"
+                error: "Job not found"
             })
         }
     }
