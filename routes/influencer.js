@@ -389,7 +389,7 @@ router.put("/updateSocials", influencerMiddleware, async (req, res) => {
         const { Youtube, Youtube_api, Instagram, Instagram_api, Facebook, Facebook_api } = req.body;
 
         if (!Youtube && !Instagram && !Facebook) {
-            res.status(400).json({ error: "atleast one social URL and api needed" })
+            return res.status(400).json({ error: "Social URL not provided" })
         }
 
         if (Youtube) {
@@ -467,7 +467,6 @@ router.put("/updateSocials", influencerMiddleware, async (req, res) => {
         console.log("Update profile error", error);
         res.status(500).json({ error: "Error updating profile" });
         if (session) {
-
             session.abortTransaction();
             session.endSession();
         }

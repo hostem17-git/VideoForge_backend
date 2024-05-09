@@ -23,6 +23,9 @@ app.use("/api/v1/user", userRouter);
 app.use("/api/v1/influencer", influencerRouter);
 app.use("/api/v1/shared", sharedRouter);
 
+app.all("*", (req, res) => {
+    res.status(404).json({ "error": "Resource not found" });
+})
 
 const PORT = process.env.PORT || 3000;
 
