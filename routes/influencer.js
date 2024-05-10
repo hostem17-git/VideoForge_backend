@@ -576,20 +576,34 @@ router.get("/myId", influencerMiddleware, async (req, res) => {
 });
 
 // to get presigned url to upload raw files
-router.get("/uploadPreSigner", influencerMiddleware, async (req, res) => {
+router.put("/uploadPreSigner", influencerMiddleware, async (req, res) => {
     try {
         const { fileName, fileExtension, jobId } = req.body;
+
+        if (!fileName)
+            return res.status(400).json({ error: "filename not provided" })
+
+        if (!fileExtension)
+            return res.status(400).json({ error: "file extension not provided" })
+
+        if (!jobId)
+            return res.status(400).json({ error: "job id not provided" })
 
         const influencer = res.locals.influencerDocument;
         const influencerId = influencer.customId;
 
+        const job = await Job.findOne({ customId: jobId, owner: influencer._id}).populate("users", "username").populate("owner", "username");
+
+        if (!job)
+            return res.status(400).json({ error: "no owned job with provided job id" })
+
+    console.log(`${influencerId}/${jobId}/${fileName}-${cuid()}.${fileExtension}`)
         const url = await getSignedUrl(client,
             new PutObjectCommand({
                 Bucket: process.env.AWS_BUCKET,
                 Key: `${influencerId}/${jobId}/${fileName}-${cuid()}.${fileExtension}`,
                 Metadata: {
                     type: `application/${fileExtension}`
-
                 }
             }),
             { expiresIn: 60 * 5 } // expires in 5 minutes
