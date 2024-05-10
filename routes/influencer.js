@@ -592,12 +592,12 @@ router.put("/uploadPreSigner", influencerMiddleware, async (req, res) => {
         const influencer = res.locals.influencerDocument;
         const influencerId = influencer.customId;
 
-        const job = await Job.findOne({ customId: jobId, owner: influencer._id}).populate("users", "username").populate("owner", "username");
+        const job = await Job.findOne({ customId: jobId, owner: influencer._id }).populate("users", "username").populate("owner", "username");
 
         if (!job)
             return res.status(400).json({ error: "no owned job with provided job id" })
 
-    console.log(`${influencerId}/${jobId}/${fileName}-${cuid()}.${fileExtension}`)
+        console.log(`${influencerId}/${jobId}/${fileName}-${cuid()}.${fileExtension}`)
         const url = await getSignedUrl(client,
             new PutObjectCommand({
                 Bucket: process.env.AWS_BUCKET,
@@ -617,5 +617,67 @@ router.put("/uploadPreSigner", influencerMiddleware, async (req, res) => {
         res.status(500).json({ error: error })
     }
 })
+
+
+router.put("/updateFileKey", influencerMiddleware, async (req, res) => {
+    let session;
+    try {
+        const { key, jobId, type, fileName } = req.body;
+
+        if (!key)
+            return res.status(400).json({ error: "key not provided" });
+        if (!jobId)
+            return res.status(400).json({ error: "job id not provided" });
+        if (!type)
+            return res.status(400).json({ error: "type not provided" });
+        if (!fileName)
+            return res.status(400).json({ error: "file name not provided" });
+        // console.log(type)
+        if (type !== "rawFile" && type !== "finalFile")
+            return res.status(400).json({ error: "invalid file type" })
+
+        const influencer = res.locals.influencerDocument;
+        // const influencerId = influencer.customId;
+        const job = await Job.findOne({ customId: jobId, owner: influencer._id }).populate("users", "username").populate("owner", "username");
+
+        if (!job)
+            return res.status(400).json({ error: "no owned job with provided job id" })
+
+        session = await mongoose.startSession();
+
+        if (!session) {
+            return res.status(500).json({ error: "Error initiaing a DB session" })
+        }
+
+        session.startTransaction();
+
+        if (type === "rawFile") {
+            job.rawfiles.push({
+                key, fileName
+            })
+        } else if (type === "finalFile") {
+            job.finalFiles.push({
+                key, fileName
+            })
+        }
+
+        await job.save();
+        session.commitTransaction();
+        session.endSession();
+        return res.status(200).json({ message: "file uploaded successfully" })
+
+    } catch (error) {
+        console.log("influencer update file key error", error);
+        res.status(500).json({ error })
+        if (session) {
+            await session.abortTransaction();
+            session.endSession();
+        }
+    } finally {
+        if (session)
+            session.endSession();
+    }
+})
+
 
 module.exports = router;

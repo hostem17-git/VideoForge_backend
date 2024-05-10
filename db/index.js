@@ -116,9 +116,30 @@ const JobSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
-    rawfiles: [String],
-    editedFiles: [String],
-    finalFiles: [String],
+    rawfiles: [{
+        key: String,
+        fileName: String,
+        CreatedDate: {
+            type: Date,
+            default: () => Date.now()
+        }
+    }],
+    editedFiles: [{
+        key: String,
+        fileName: String,
+        CreatedDate: {
+            type: Date,
+            default: () => Date.now()
+        }
+    }],
+    finalFiles: [{
+        key: String,
+        fileName: String,
+        CreatedDate: {
+            type: Date,
+            default: () => Date.now()
+        }
+    }],
     JobTitle: {
         type: String,
         required: true
