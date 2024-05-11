@@ -4,9 +4,25 @@ const { User, Job } = require('../db/index');
 const jwt = require("jsonwebtoken");
 const zod = require("zod");
 const bcrypt = require("bcrypt");
+const cuid = require('cuid');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+
+const mongoose = require("mongoose");
+
 
 const router = Router();
 const emailSchema = zod.string().email();
+
+const client = new S3Client({
+    region: 'ap-south-1',
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY,
+        secretAccessKey: process.env.AWS_SECRET_KEY
+    }
+})
+
+
 const socialSchema = zod.object({
     url: zod.string().url(),
     // api: zod.string().optional()
@@ -257,39 +273,177 @@ router.get("/myjobs/:stage?", userMiddleware, async (req, res) => {
     }
 })
 
-// router.get("/myJobs", userMiddleware, async (req, res) => {
-//     try {
-//         const user = res.locals.userDocument;
-//         const userId = user._id;
-//         const page = parseInt(req.query.page) || 1;
-//         const pageSize = parseInt(req.query.pageSize) || 25;
-//         const offSet = (page - 1) * pageSize;
-//         const totalCount = await Job.countDocuments({ owner: influencerId });
-//         const totalPages = Math.ceil(totalCount / pageSize);
 
-//         // const jobs = await Job.find({ owner: influencerId }).skip(offSet).limit(pageSize).sort({ CreatedDate: -1 });
-
-//         const jobs = await Job.find({ users: { $in: [userId] } }).populate('owner', 'username email').select("-rawFiles -editedFiles -EditedFiles -finalFiles")
+// to get presigned url to upload raw files
+router.put("/uploadPreSigner", userMiddleware, async (req, res) => {
+    try {
+        const { fileName, fileExtension, jobId } = req.body;
 
 
-//         res.status(200).json(
-//             {
-//                 page,
-//                 pageSize,
-//                 totalCount,
-//                 totalPages,
-//                 jobs
-//             }
-//         );
-//     } catch (error) {
-//         console.log("Error Fetching my jobs for influencer", error)
-//         res.status(500).json({
-//             error: error
-//         })
-//     }
+        if (!fileName)
+            return res.status(400).json({ error: "filename not provided" })
+
+        if (!fileExtension)
+            return res.status(400).json({ error: "file extension not provided" })
+
+        if (!jobId)
+            return res.status(400).json({ error: "job id not provided" })
 
 
-// })
+        const user = res.locals.userDocument;
+        const userId = user._id;
+
+        const job = await Job.findOne({ customId: jobId, users: { $in: [userId] } }).populate("users", "username").populate("owner", "customId");
+
+
+
+        if (!job)
+            return res.status(400).json({ error: "no owned job with provided job id" })
+
+        const influencerId = job.owner.customId;
+
+
+        const key = `${influencerId}/${jobId}/${fileName}-${cuid()}.${fileExtension}`
+        console.log(key)
+        const url = await getSignedUrl(client,
+            new PutObjectCommand({
+                Bucket: process.env.AWS_BUCKET,
+                Key: key,
+                Metadata: {
+                    type: `application/${fileExtension}`
+                }
+            }),
+            { expiresIn: 60 * 5 } // expires in 5 minutes
+        )
+        res.status(200).json({
+            url,
+            key: key
+        })
+    } catch (error) {
+        console.log("user get uploadePreSigner Error", error);
+        res.status(500).json({ error: error })
+    }
+})
+
+router.put("/updateFileKey", userMiddleware, async (req, res) => {
+    let session;
+    try {
+        const { key, jobId, type, fileName } = req.body;
+
+        if (!key)
+            return res.status(400).json({ error: "key not provided" });
+        if (!jobId)
+            return res.status(400).json({ error: "job id not provided" });
+        if (!type)
+            return res.status(400).json({ error: "type not provided" });
+        if (!fileName)
+            return res.status(400).json({ error: "file name not provided" });
+        if (type !== "rawFile" && type !== "finalFile")
+            return res.status(400).json({ error: "invalid file type" })
+
+
+        const user = res.locals.userDocument;
+        const userId = user._id;
+
+        const job = await Job.findOne({ customId: jobId, users: { $in: [userId] } }).populate("users", "username");
+
+        if (!job)
+            return res.status(400).json({ error: "no assigned job with provided job id" })
+
+        session = await mongoose.startSession();
+
+        if (!session) {
+            return res.status(500).json({ error: "Error initiaing a DB session" })
+        }
+
+        session.startTransaction();
+
+        // if (type === "rawFile") {
+        job.editedFiles.push({
+            key, fileName
+        })
+        // } else if (type === "finalFile") {
+
+        // }
+
+        await job.save();
+        session.commitTransaction();
+        session.endSession();
+        return res.status(200).json({ message: "file uploaded successfully" })
+
+    } catch (error) {
+        console.log("user update file key error", error);
+        res.status(500).json({ error })
+        if (session) {
+            await session.abortTransaction();
+            session.endSession();
+        }
+    } finally {
+        if (session)
+            session.endSession();
+    }
+})
+
+
+
+router.put("/downloadPreSigner", userMiddleware, async (req, res) => {
+    try {
+        const { jobId, key } = req.body;
+
+        if (!jobId)
+            return res.status(400).json({ error: "job id not provided" })
+
+        if (!key)
+            return res.status(400).json({ error: "file key id not provided" })
+
+        const user = res.locals.userDocument;
+        const userId = user._id;
+
+
+        const data = await Job.findOne({
+            customId: jobId,
+            users: { $in: [userId] },
+            $or: [{
+                rawFiles: {
+                    $elemMatch: { key }
+                }
+
+            }, {
+                editedFiles: {
+                    $elemMatch: { key }
+                }
+
+            }, {
+                finalFiles: {
+                    $elemMatch: { key }
+                }
+
+                }]
+        })
+
+        if (!data)
+            return res.status(403).json({ error: "access not available for this file" });
+
+
+        const url = await getSignedUrl(client,
+            new GetObjectCommand({
+                Bucket: process.env.AWS_BUCKET,
+                Key: key
+            }),
+            { expiresIn: 60 * 5 }// expires in 5 minutes. 
+        )
+
+        return res.status(200).json({ url })
+
+    } catch (error) {
+        console.log("user download presigned error", error);
+        res.status(500).json(error)
+    }
+}
+
+)
+
+
 
 
 module.exports = router;
