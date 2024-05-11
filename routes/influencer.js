@@ -678,6 +678,65 @@ router.put("/updateFileKey", influencerMiddleware, async (req, res) => {
     }
 })
 
+router.put("/approveFile", influencerMiddleware, async (req, res) => {
+    let session;
+    try {
+        const { key, jobId } = req.body;
+
+        if (!key)
+            return res.status(400).json({ error: "key not provided" });
+        if (!jobId)
+            return res.status(400).json({ error: "job id not provided" });
+
+
+        const influencer = res.locals.influencerDocument;
+        const job = await Job.findOne({ customId: jobId, owner: influencer._id })
+
+        if (!job)
+            return res.status(400).json({ error: "no owned job with provided job id" })
+
+
+        let editedFiles = job.editedFiles;
+
+        const finalFile = editedFiles.filter(file => file.key === key)
+
+        if (finalFile.length === 0)
+            return res.status(400).json({ error: "provided file not in edited files list" })
+
+        editedFiles = editedFiles.filter(file => file.key !== key)
+        session = await mongoose.startSession();
+
+
+
+        if (!session) {
+            return res.status(500).json({ error: "Error initiaing a DB session" })
+        }
+
+        session.startTransaction();
+
+        job.finalFiles.push(finalFile[0]);
+
+        job.editedFiles = editedFiles;
+
+        await job.save();
+        session.commitTransaction();
+        session.endSession();
+        return res.status(200).json({ message: "file uploaded successfully" })
+
+    } catch (error) {
+        console.log("influencer update file key error", error);
+        res.status(500).json({ error })
+        if (session) {
+            await session.abortTransaction();
+            session.endSession();
+        }
+    } finally {
+        if (session)
+            session.endSession();
+    }
+})
+
+
 router.put("/downloadPreSigner", influencerMiddleware, async (req, res) => {
     try {
         const { jobId, key } = req.body;
@@ -710,7 +769,7 @@ router.put("/downloadPreSigner", influencerMiddleware, async (req, res) => {
 
             }]
         })
-  
+
         if (!data)
             return res.status(403).json({ error: "access not available for this file" });
 
