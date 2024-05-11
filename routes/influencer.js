@@ -679,5 +679,114 @@ router.put("/updateFileKey", influencerMiddleware, async (req, res) => {
     }
 })
 
+router.put("/downloadPreSigner", influencerMiddleware, async (req, res) => {
+    try {
+        const { jobId, key } = req.body;
 
+        if (!jobId)
+            return res.status(400).json({ error: "job id not provided" })
+
+        if (!key)
+            return res.status(400).json({ error: "file key id not provided" })
+
+        const influencer = res.locals.influencerDocument;
+
+        console.log("jobID", jobId);
+        console.log("key", key);
+
+        // {rawfiles:{$elemMatch:{key:"31ee4416-0ce8-441a-a880-e0709172081c/c119c56e-cc23-4cc2-84f9-6da12dd0b333/baaki batien peene baad-clw1ob8q400024gve5agdbomm.mp4"}}}
+
+        const query1 = {
+            customId: jobId,
+            owner: influencer._id,
+            rawFiles: {
+                $elemMatch: { key: key }
+            }
+
+        }
+
+        const query2 = {
+            customId: 'c119c56e-cc23-4cc2-84f9-6da12dd0b333',
+            owner: influencer._id,
+            rawfiles: {
+                $elemMatch:
+                {
+                    key:key
+                        // "31ee4416-0ce8-441a-a880-e0709172081c/c119c56e-cc23-4cc2-84f9-6da12dd0b333/baaki batien peene baad-clw1ob8q400024gve5agdbomm.mp4"
+                }
+            }
+        }
+
+
+
+
+
+
+console.log(query1 === query2)
+
+        console.log("query1", query1)
+        console.log("query2", query2)
+        const job2 = await Job.findOne(query1)
+        console.log("job2", job2);
+
+
+        const job3 = await Job.findOne(query2)
+
+        console.log("job3", job3)
+
+
+
+        // { rawfiles: { $elemMatch: { key: "31ee4416-0ce8-441a-a880-e0709172081c/c119c56e-cc23-4cc2-84f9-6da12dd0b333/baaki batien peene baad-clw1ob8q400024gve5agdbomm.mp4" } } }
+
+        // const query = [
+        //     {
+        //         "rawFiles },
+        //     { "editedFiles.key": key },
+        //     { "finalFiles.key": key }
+        // ]
+
+        const data = await Job.findOne({
+            customId: jobId,
+            owner: influencer._id,
+            $or: [{
+                rawfiles: {
+                    $elemMatch: { key }
+                }
+
+            }, {
+                editedFiles: {
+                    $elemMatch: { key }
+                }
+
+            }, {
+                finalFiles: {
+                    $elemMatch: { key }
+                }
+
+            }]
+        })
+        console.log("---->")
+        console.log(data)
+
+        if (!data)
+            return res.status(403).json({ error: "access not available for this file" });
+
+
+        const url = await getSignedUrl(client,
+            new GetObjectCommand({
+                Bucket: process.env.AWS_BUCKET,
+                Key: key
+            }),
+            { expiresIn: 60 * 5 }// expires in 5 hours. 
+        )
+
+        return res.status(200).json({ url })
+
+    } catch (error) {
+        console.log("download presigned error", error);
+        res.status(500).json(error)
+    }
+}
+
+)
 module.exports = router;
