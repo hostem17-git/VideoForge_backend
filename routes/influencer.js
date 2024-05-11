@@ -597,11 +597,13 @@ router.put("/uploadPreSigner", influencerMiddleware, async (req, res) => {
         if (!job)
             return res.status(400).json({ error: "no owned job with provided job id" })
 
-        console.log(`${influencerId}/${jobId}/${fileName}-${cuid()}.${fileExtension}`)
+
+        const key = `${influencerId}/${jobId}/${fileName}-${cuid()}.${fileExtension}`
+
         const url = await getSignedUrl(client,
             new PutObjectCommand({
                 Bucket: process.env.AWS_BUCKET,
-                Key: `${influencerId}/${jobId}/${fileName}-${cuid()}.${fileExtension}`,
+                Key: key,
                 Metadata: {
                     type: `application/${fileExtension}`
                 }
@@ -610,7 +612,7 @@ router.put("/uploadPreSigner", influencerMiddleware, async (req, res) => {
         )
         res.status(200).json({
             url,
-            key: `${influencerId}/${jobId}/${fileName}-${cuid()}.${fileExtension}`
+            key: key
         })
     } catch (error) {
         console.log("Influencer get uploadePreSigner Error", error);
@@ -632,12 +634,10 @@ router.put("/updateFileKey", influencerMiddleware, async (req, res) => {
             return res.status(400).json({ error: "type not provided" });
         if (!fileName)
             return res.status(400).json({ error: "file name not provided" });
-        // console.log(type)
         if (type !== "rawFile" && type !== "finalFile")
             return res.status(400).json({ error: "invalid file type" })
 
         const influencer = res.locals.influencerDocument;
-        // const influencerId = influencer.customId;
         const job = await Job.findOne({ customId: jobId, owner: influencer._id }).populate("users", "username").populate("owner", "username");
 
         if (!job)
@@ -652,7 +652,7 @@ router.put("/updateFileKey", influencerMiddleware, async (req, res) => {
         session.startTransaction();
 
         if (type === "rawFile") {
-            job.rawfiles.push({
+            job.rawFiles.push({
                 key, fileName
             })
         } else if (type === "finalFile") {
@@ -691,65 +691,11 @@ router.put("/downloadPreSigner", influencerMiddleware, async (req, res) => {
 
         const influencer = res.locals.influencerDocument;
 
-        console.log("jobID", jobId);
-        console.log("key", key);
-
-        // {rawfiles:{$elemMatch:{key:"31ee4416-0ce8-441a-a880-e0709172081c/c119c56e-cc23-4cc2-84f9-6da12dd0b333/baaki batien peene baad-clw1ob8q400024gve5agdbomm.mp4"}}}
-
-        const query1 = {
-            customId: jobId,
-            owner: influencer._id,
-            rawFiles: {
-                $elemMatch: { key: key }
-            }
-
-        }
-
-        const query2 = {
-            customId: 'c119c56e-cc23-4cc2-84f9-6da12dd0b333',
-            owner: influencer._id,
-            rawfiles: {
-                $elemMatch:
-                {
-                    key:key
-                        // "31ee4416-0ce8-441a-a880-e0709172081c/c119c56e-cc23-4cc2-84f9-6da12dd0b333/baaki batien peene baad-clw1ob8q400024gve5agdbomm.mp4"
-                }
-            }
-        }
-
-
-
-
-
-
-console.log(query1 === query2)
-
-        console.log("query1", query1)
-        console.log("query2", query2)
-        const job2 = await Job.findOne(query1)
-        console.log("job2", job2);
-
-
-        const job3 = await Job.findOne(query2)
-
-        console.log("job3", job3)
-
-
-
-        // { rawfiles: { $elemMatch: { key: "31ee4416-0ce8-441a-a880-e0709172081c/c119c56e-cc23-4cc2-84f9-6da12dd0b333/baaki batien peene baad-clw1ob8q400024gve5agdbomm.mp4" } } }
-
-        // const query = [
-        //     {
-        //         "rawFiles },
-        //     { "editedFiles.key": key },
-        //     { "finalFiles.key": key }
-        // ]
-
         const data = await Job.findOne({
             customId: jobId,
             owner: influencer._id,
             $or: [{
-                rawfiles: {
+                rawFiles: {
                     $elemMatch: { key }
                 }
 
@@ -765,9 +711,7 @@ console.log(query1 === query2)
 
             }]
         })
-        console.log("---->")
-        console.log(data)
-
+  
         if (!data)
             return res.status(403).json({ error: "access not available for this file" });
 

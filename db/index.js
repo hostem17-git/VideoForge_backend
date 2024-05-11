@@ -116,7 +116,7 @@ const JobSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
-    rawfiles: [{
+    rawFiles: [{
         key: String,
         fileName: String,
         CreatedDate: {

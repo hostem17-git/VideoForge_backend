@@ -233,7 +233,7 @@ router.get("/myjobs/:stage?", userMiddleware, async (req, res) => {
             query.Stage = stage
         };
 
-        const data = await Job.find(query).skip(offSet).limit(pageSize).populate('owner').select("-rawfiles -editedFiles -EditedFiles -finalFiles").sort({ CreatedDate: -1 });
+        const data = await Job.find(query).skip(offSet).limit(pageSize).populate('owner').select("-rawFiles -editedFiles -EditedFiles -finalFiles").sort({ CreatedDate: -1 });
 
         if (data.length > 0) {
             return res.status(200).json({
@@ -269,7 +269,7 @@ router.get("/myjobs/:stage?", userMiddleware, async (req, res) => {
 
 //         // const jobs = await Job.find({ owner: influencerId }).skip(offSet).limit(pageSize).sort({ CreatedDate: -1 });
 
-//         const jobs = await Job.find({ users: { $in: [userId] } }).populate('owner', 'username email').select("-rawfiles -editedFiles -EditedFiles -finalFiles")
+//         const jobs = await Job.find({ users: { $in: [userId] } }).populate('owner', 'username email').select("-rawFiles -editedFiles -EditedFiles -finalFiles")
 
 
 //         res.status(200).json(

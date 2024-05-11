@@ -159,7 +159,7 @@ router.get("/jobs/:stage?", sharedAccessMiddleware, async (req, res) => {
         };
 
         console.log("query", query);
-        const data = await Job.find(query).skip(offSet).limit(pageSize).select('-rawfiles -editedFiles -EditedFiles -finalFiles').sort({ CreatedDate: -1 });
+        const data = await Job.find(query).skip(offSet).limit(pageSize).select('-rawFiles -editedFiles -EditedFiles -finalFiles').sort({ CreatedDate: -1 });
 
         if (data.length > 0) {
             return res.status(200).json({
@@ -228,7 +228,7 @@ router.get("/job/:jobId", sharedAccessMiddleware, async (req, res) => {
         if (!jobId) {
             return res.status(400).json({ error: "Job id not provided" })
         }
-        const data = await Job.findOne({ customId: jobId }).select("-rawfiles -editedFiles -EditedFiles -finalFiles").populate("users", "username").populate("owner", "username");
+        const data = await Job.findOne({ customId: jobId }).select("-rawFiles -editedFiles -EditedFiles -finalFiles").populate("users", "username").populate("owner", "username");
 
         if (data) {
             return res.status(200).json({
