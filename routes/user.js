@@ -107,14 +107,14 @@ router.post("/SignIn", async (req, res) => {
 
         res.cookie("role", "user", {
             maxAge: 21600000, // 6 hours
-            httpOnly: true,
+            // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
             sameSite: 'Strict'
         })
 
         res.cookie('id', user.customId, {
             maxAge: 21600000, // 6 hours
-            httpOnly: true,
+            // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
             sameSite: 'Strict'
         })
