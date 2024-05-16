@@ -2,14 +2,14 @@ const jwt = require("jsonwebtoken");
 const { Admin } = require("../db");
 
 async function adminMiddleware(req, res, next) {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer")) {
-        return res.status(401).json({ error: "Authorization token missing" });
-    }
-    const token = authHeader.split(' ')[1];
 
     try {
+        const cookie = req.cookies;
+        if (!cookie || !cookie.token) {
+            return res.status(401).json({ error: "Authorization token missing" });
+        }
+        const token = cookie.token
+
         const decodedValue = jwt.verify(token, process.env.JWT_SECRET);
         if (decodedValue && decodedValue.role === "admin") {
             const admin = await Admin.findOne({ email: decodedValue.email });

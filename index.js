@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt = require("jsonwebtoken")
 const cors = require("cors")
+const cookieParser = require("cookie-parser");
 require('dotenv').config();
 
 const bodyParser = require('body-parser');
@@ -10,12 +11,15 @@ const influencerRouter = require("./routes/influencer");
 const sharedRouter = require("./routes/shared");
 
 const corsOptions = {
-    origin: '*', // Allow requests from this origin
+    origin: 'http://localhost:5173', // Allow requests from this origin
     methods: ['GET', 'POST', 'PUT'],       // Allow these HTTP methods
     // allowedHeaders: ['Content-Type'], // Allow these headers
+    credentials: true
 }
 
 const app = express()
+app.use(cookieParser());
+
 app.use(bodyParser.json());
 app.use(cors(corsOptions))
 app.use("/api/v1/admin", adminRouter);

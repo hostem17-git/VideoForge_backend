@@ -3,15 +3,14 @@ const jwt = require("jsonwebtoken");
 const { User } = require("../db");
 
 async function userMiddleware(req, res, next) {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer")) {
-        return res.status(401).json({ error: "Authorization token missing" });
-    }
-
-    const token = authHeader.split(' ')[1];
 
     try {
+        const cookie = req.cookies;
+        if (!cookie || !cookie.token) {
+            return res.status(401).json({ error: "Authorization token missing" });
+        }
+        const token = cookie.token
+
         const decodedValue = jwt.verify(token, process.env.JWT_SECRET);
         if (decodedValue && decodedValue.role === "user") {
             const user = await User.findOne({ email: decodedValue.email }).select('-encryptedPassword');

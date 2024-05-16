@@ -143,11 +143,29 @@ router.post("/SignIn", async (req, res) => {
             { expiresIn: JWT_LIFE }
         )
 
-        return res.status(200).json({
-            token: token,
-            role: "influencer",
-            id: influencer.customId
+        res.cookie("token", token, {
+            maxAge: 21600000, // 6 hours
+            httpOnly: true,
+            //secure:true ,  //To be uncommented when out of localhost,
+            sameSite: 'Strict'
         })
+
+        res.cookie("role", "creator", {
+            maxAge: 21600000, // 6 hours
+            httpOnly: true,
+            // secure:true ,  To be uncommented when out of localhost,
+            sameSite: 'Strict'
+        })
+
+        res.cookie('id', influencer.customId, {
+            maxAge: 21600000, // 6 hours
+            httpOnly: true,
+            // secure:true ,  To be uncommented when out of localhost,
+            sameSite: 'Strict'
+        })
+
+        res.status(200).json({ message: "influencer logged in" })
+
 
 
     } catch (err) {
@@ -162,6 +180,7 @@ router.post("/reset-password", async (req, res) => {
 })
 
 // To create a new job
+//  Check if we need to refetch influecnver document as owner or not
 router.post("/createjob", influencerMiddleware, async (req, res) => {
     let session;
     try {
@@ -184,8 +203,10 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
         }
         // *********************
 
-        const decodedToken = tokenDecoder(req.headers.authorization.split(" ")[1]);
-        const email = decodedToken.email;
+
+        const influencer = res.locals.influencerDocument;
+
+        const influencerMail = influencer.email
 
 
         const owner = await Influencer.findOne({ email: email.trim() }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api');
@@ -257,7 +278,9 @@ router.put("/hire", influencerMiddleware, async (req, res) => {
             return res.status(400).json({ error: "Invalid job ID" });
         }
 
-        const influencerMail = tokenDecoder(req.headers.authorization.split(" ")[1]).email;
+        const influencer = res.locals.influencerDocument;
+
+        const influencerMail = influencer.email
 
         if (job.owner.email !== influencerMail) {
             return res.status(403).json({ error: "Cannot hire to a non-owned job" })
@@ -331,7 +354,10 @@ router.put("/closejob", influencerMiddleware, async (req, res) => {
             return res.status(400).json({ error: "Invalid job ID" });
         }
 
-        const influencerMail = tokenDecoder(req.headers.authorization.split(" ")[1]).email;
+
+        const influencer = res.locals.influencerDocument;
+
+        const influencerMail = influencer.email
 
         if (job.owner.email !== influencerMail) {
             await session.abortTransaction();

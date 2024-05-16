@@ -7,6 +7,35 @@ const jwt = require("jsonwebtoken");
 const router = Router();
 
 
+router.get("/logout", sharedAccessMiddleware, async (req, res) => {
+    try {
+        res.cookie("token", '', {
+            maxAge: 0, // 6 hours
+            httpOnly: true,
+            //secure:true ,  //To be uncommented when out of localhost,
+            sameSite: 'Strict'
+        })
+
+        res.cookie("role", "", {
+            maxAge: 0, // 6 hours
+            httpOnly: true,
+            // secure:true ,  To be uncommented when out of localhost,
+            sameSite: 'Strict'
+        })
+
+        res.cookie('id', '', {
+            maxAge: 0, // 6 hours
+            httpOnly: true,
+            // secure:true ,  To be uncommented when out of localhost,
+            sameSite: 'Strict'
+        })
+        return res.status(200).json({ message: "logged out" })
+    } catch (error) {
+        console.log("shared logout error", error);
+        res.status(500).json({ error: "Internal server error" })
+    }
+});
+
 router.get("/user/:userId", sharedAccessMiddleware, async (req, res) => {
     try {
         const userID = req.params.userId;
@@ -185,13 +214,11 @@ router.get("/jobs/:stage?", sharedAccessMiddleware, async (req, res) => {
 // User validation
 router.get("/userValidation/", (req, res) => {
     try {
-
-        const authHeader = req.headers.authorization;
-
-        if (!authHeader || !authHeader.startsWith("Bearer")) {
+        const cookie = req.cookies;
+        if (!cookie || !cookie.token) {
             return res.status(401).json({ error: "Authorization token missing" });
         }
-        const token = authHeader.split(' ')[1];
+        const token = cookie.token
 
         if (!token) {
             res.status(400).json({ error: "Token missing" });
