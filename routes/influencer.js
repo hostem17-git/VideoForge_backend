@@ -103,7 +103,7 @@ router.post("/Signup", async (req, res) => {
         }
     }
 });
-
+// TODO: Handle singin attempt from SSO logged user
 router.post("/SignIn", async (req, res) => {
     const { email, password } = req.body;
 
@@ -144,21 +144,21 @@ router.post("/SignIn", async (req, res) => {
         )
 
         res.cookie("token", token, {
-            maxAge: 21600000, // 6 hours
+            maxAge: 3600000, // 6 hours
             httpOnly: true,
             //secure:true ,  //To be uncommented when out of localhost,
             sameSite: 'Strict'
         })
 
         res.cookie("role", "creator", {
-            maxAge: 21600000, // 6 hours
-           // httpOnly: true,
+            maxAge: 3600000, // 6 hours
+            // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
             sameSite: 'Strict'
         })
 
         res.cookie('id', influencer.customId, {
-            maxAge: 21600000, // 6 hours
+            maxAge: 3600000, // 6 hours
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
             sameSite: 'Strict'

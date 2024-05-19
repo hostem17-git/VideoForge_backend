@@ -2,6 +2,7 @@ const { Router } = require("express");
 const sharedAccessMiddleware = require("../middleware/shared");
 const { User, Influencer, Job } = require('../db/index');
 const jwt = require("jsonwebtoken");
+const { default: mongoose } = require("mongoose");
 
 
 const router = Router();
@@ -168,7 +169,6 @@ router.get("/influencers", sharedAccessMiddleware, async (req, res) => {
 //  Get all jobs
 router.get("/jobs/:stage?", sharedAccessMiddleware, async (req, res) => {
     try {
-        console.log("in get jobs")
         const stage = req.params.stage;
 
         const page = parseInt(req.query.page) || 1;
@@ -187,7 +187,6 @@ router.get("/jobs/:stage?", sharedAccessMiddleware, async (req, res) => {
             query.Stage = stage
         };
 
-        console.log("query", query);
         const data = await Job.find(query).skip(offSet).limit(pageSize).select('-rawFiles -editedFiles -EditedFiles -finalFiles').sort({ CreatedDate: -1 });
 
         if (data.length > 0) {
@@ -247,7 +246,6 @@ router.get("/userValidation/", (req, res) => {
 })
 
 router.get("/job/:jobId", sharedAccessMiddleware, async (req, res) => {
-    console.log("in shared job")
     try {
 
         const jobId = req.params.jobId;
@@ -272,6 +270,170 @@ router.get("/job/:jobId", sharedAccessMiddleware, async (req, res) => {
     catch (error) {
         console.log("user get Job error", error)
         res.status(500).json({ error: "Unable to fetch Job" });
+    }
+});
+
+
+router.post("/GoogleSignUp", async (req, res) => {
+    let session;
+    try {
+
+        const { Googletoken, userType } = req.body;
+        const decodedValue = jwt.decode(Googletoken);
+
+        const email = decodedValue.email;
+        const username = decodedValue.name;
+
+        let userDocument;
+
+        if (userType !== "creator" && userType !== "user") {
+            return res.status(401).json({ error: "invalid user type" })
+        }
+
+        session = await mongoose.startSession();
+
+        if (!session) {
+            return res.status(500).json({ error: "Error initiating a DB session" })
+        }
+        session.startTransaction();
+
+        if (userType === "creator") {
+
+            userDocument = await Influencer.create({
+                username: username.trim(),
+                email: email.trim(),
+            })
+        } else if (userType === "user") {
+
+            userDocument = await User.create({
+                username: username.trim(),
+                email: email.trim()
+            })
+
+        }
+        await session.commitTransaction();
+        session.endSession();
+
+
+        const token = jwt.sign({
+            email: email.trim(),
+            role: `${userType === "creator" ? "influencer" : "user"}`,
+        }, process.env.JWT_SECRET,
+            { expiresIn: JWT_LIFE }
+        )
+
+        res.cookie("token", token, {
+            maxAge: 3600000, // 1 hour
+            httpOnly: true,
+            //secure:true ,  //To be uncommented when out of localhost,
+            sameSite: 'Strict'
+        })
+
+        res.cookie("role", `${userType === "creator" ? "creator" : "user"}`, {
+            maxAge: 3600000, // 1 hour
+            // httpOnly: true,
+            // secure:true ,  To be uncommented when out of localhost,
+            sameSite: 'Strict'
+        })
+
+        res.cookie('id', userDocument.customId, {
+            maxAge: 3600000, // 1 hour
+            // httpOnly: true,
+            // secure:true ,  To be uncommented when out of localhost,
+            sameSite: 'Strict'
+        })
+
+
+        res.status(200).json({ message: `${userType === "creator" ? "influencer" : "user"} created successfully` })
+    } catch (error) {
+        if (error.code == 11000) {
+            res.status(409).json({ error: "Email already exists" })
+        } else {
+            console.error("Error signing up influencer:", error);
+            res.status(500).json({ error: "Internal server error" });
+        }
+        if (session) {
+            await session.abortTransaction();
+            session.endSession();
+        }
+    } finally {
+        if (session) {
+            session.endSession();
+        }
+    }
+});
+
+router.post("/GoogleSignIn", async (req, res) => {
+    try {
+        const { Googletoken, userType } = req.body;
+        const decodedValue = jwt.decode(Googletoken);
+
+
+        const email = decodedValue.email;
+
+        let userDocument;
+
+        if (userType !== "creator" && userType !== "user") {
+            return res.status(401).json({ error: "invalid user type" })
+        }
+
+        if (userType === "creator") {
+            userDocument = await Influencer.findOne({
+                email: email.trim()
+            }).select('-Youtube_api -X_api -Instagram_api -Facebook_api');
+        }
+        else if (userType === "user") {
+            userDocument = await User.findOne({
+                email: email.trim()
+            }).select('-Youtube_api -X_api -Instagram_api -Facebook_api');
+        }
+
+        if (!userDocument) {
+            return res.status(401).json({
+                error: "user not found"
+            })
+        }
+
+        if (userDocument.suspended) {
+            return res.status(403).json({
+                error: "Influencer suspended",
+                errorReason: userDocument.SuspensionReason
+            })
+        }
+
+        const token = jwt.sign({
+            email: email.trim(),
+            role: `${userType === "creator" ? "influencer" : "user"}`,
+        }, process.env.JWT_SECRET,
+            { expiresIn: JWT_LIFE }
+        )
+
+        res.cookie("token", token, {
+            maxAge: 3600000, // 6 hours
+            httpOnly: true,
+            //secure:true ,  //To be uncommented when out of localhost,
+            sameSite: 'Strict'
+        })
+
+        res.cookie("role", `${userType === "creator" ? "creator" : "user"}`, {
+            maxAge: 3600000, // 6 hours
+            // httpOnly: true,
+            // secure:true ,  To be uncommented when out of localhost,
+            sameSite: 'Strict'
+        })
+
+        res.cookie('id', userDocument.customId, {
+            maxAge: 3600000, // 6 hours
+            // httpOnly: true,
+            // secure:true ,  To be uncommented when out of localhost,
+            sameSite: 'Strict'
+        })
+
+        res.status(200).json({ message: `${userType} logged in` })
+
+    } catch (err) {
+        console.log("Influencer Sign in error", err);
+        return res.status(500).json({ error: "Internal server error" })
     }
 });
 

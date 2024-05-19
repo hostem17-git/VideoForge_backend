@@ -104,8 +104,9 @@ const UserSchema = new mongoose.Schema({
         default: false
     },
     suspendedOn: Date,
-    SuspensionReason: String
-})
+    SuspensionReason: String,
+
+}, { timestamps:true})
 
 const JobSchema = new mongoose.Schema({
     owner: {

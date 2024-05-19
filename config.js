@@ -1,4 +1,4 @@
-JWT_LIFE = 6 * 60 * 60
+JWT_LIFE = 1* 60 * 60
 
 
 JOB_SCHEMA_OPTIONS = ["VideoEditing",

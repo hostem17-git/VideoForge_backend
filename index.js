@@ -28,6 +28,7 @@ app.use("/api/v1/influencer", influencerRouter);
 app.use("/api/v1/shared", sharedRouter);
 
 app.all("*", (req, res) => {
+    console.log("hit")
     res.status(404).json({ "error": "Resource not found" });
 })
 
