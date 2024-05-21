@@ -209,7 +209,7 @@ router.post("/createjob", influencerMiddleware, async (req, res) => {
         const influencerMail = influencer.email
 
 
-        const owner = await Influencer.findOne({ email: email.trim() }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api');
+        const owner = await Influencer.findOne({ email: influencerMail.trim() }).select('-encryptedPassword -Youtube_api -X_api -Instagram_api -Facebook_api');
 
         // const influencer = res.locals.influencerDocument;
         session = await mongoose.startSession();

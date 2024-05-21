@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 
 // middleware to be used for shared paths - common paths for all user personas 
 function sharedAccessMiddleware(req, res, next) {
-    try {
+        try {
         const cookie = req.cookies;
         if (!cookie || !cookie.token) {
             return res.status(401).json({ error: "Authorization token missing" });
@@ -19,7 +19,7 @@ function sharedAccessMiddleware(req, res, next) {
         if (error.name === "TokenExpiredError") {
             return res.status(401).json({ error: "authorization token expired" })
         }
-        console.log("admin JWT verification error", error)
+        console.log("shared JWT verification error", error)
         res.status(401).json({ error: "Invalid token" })
     }
 }

@@ -232,7 +232,7 @@ router.get("/userValidation/", (req, res) => {
             })
         }
 
-        return res.status(403).json({
+        res.status(403).json({
             userValid: true,
             error: "Unauthorized"
         })
@@ -240,7 +240,7 @@ router.get("/userValidation/", (req, res) => {
         if (error.name === "TokenExpiredError") {
             return res.status(401).json({ error: "authorization token expired" })
         }
-        console.log("admin JWT verification error", error)
+        console.log("shared JWT verification error", error)
         res.status(401).json({ error: "Invalid inputs" })
     }
 })
