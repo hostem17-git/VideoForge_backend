@@ -102,21 +102,27 @@ router.post("/SignIn", async (req, res) => {
             maxAge: 3600000, // 6 hours
             httpOnly: true,
             //secure:true ,  //To be uncommented when out of localhost,
-            sameSite: 'Strict'
+            sameSite: 'Strict',
+            domain: DOMAIN,
+
         })
 
         res.cookie("role", "user", {
             maxAge: 3600000, // 6 hours
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
-            sameSite: 'Strict'
+            sameSite: 'Strict',
+            domain: DOMAIN,
+
         })
 
         res.cookie('id', user.customId, {
             maxAge: 3600000, // 6 hours
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
-            sameSite: 'Strict'
+            sameSite: 'Strict',
+            domain: DOMAIN,
+
         })
 
         res.status(200).json({ message: "user logged in" })

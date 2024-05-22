@@ -4,7 +4,7 @@ const { Admin, User, Influencer, Job } = require('../db/index');
 const jwt = require("jsonwebtoken");
 const zod = require("zod");
 const bcrypt = require("bcrypt");
-const { JWT_LIFE } = require('../config')
+const { JWT_LIFE, DOMAIN } = require('../config')
 
 const mongoose = require("mongoose")
 const router = Router();
@@ -103,6 +103,7 @@ router.post("/SignIn", async (req, res) => {
 
         res.cookie("token", token, {
             maxAge: 3600000, // 6 hours
+            domain: DOMAIN,
             httpOnly: true,
             //secure:true ,  //To be uncommented when out of localhost,
             sameSite: 'Strict'
@@ -112,14 +113,18 @@ router.post("/SignIn", async (req, res) => {
             maxAge: 3600000, // 6 hours
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
-            sameSite: 'Strict'
+            sameSite: 'Strict',
+            domain: DOMAIN,
+
         })
 
         res.cookie('id', admin.customId, {
             maxAge: 3600000, // 6 hours
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
-            sameSite: 'Strict'
+            sameSite: 'Strict',
+            domain: DOMAIN,
+
         })
 
         res.status(200).json({ message: "admin logged in" })

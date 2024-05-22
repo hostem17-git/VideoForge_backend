@@ -1,5 +1,6 @@
-JWT_LIFE = 1* 60 * 60
+JWT_LIFE = 1 * 60 * 60
 
+DOMAIN = "localhost";
 
 JOB_SCHEMA_OPTIONS = ["VideoEditing",
     "AudioEditing",
@@ -24,4 +25,4 @@ JOB_SCHEMA_OPTIONS = ["VideoEditing",
 ]
 
 
-module.exports = { JWT_LIFE, JOB_SCHEMA_OPTIONS };
+module.exports = { JWT_LIFE, JOB_SCHEMA_OPTIONS, DOMAIN };

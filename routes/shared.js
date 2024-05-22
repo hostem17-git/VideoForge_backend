@@ -13,6 +13,8 @@ router.get("/logout", sharedAccessMiddleware, async (req, res) => {
         res.cookie("token", '', {
             maxAge: 0, // 6 hours
             httpOnly: true,
+            domain: DOMAIN,
+
             //secure:true ,  //To be uncommented when out of localhost,
             sameSite: 'Strict'
         })
@@ -20,6 +22,8 @@ router.get("/logout", sharedAccessMiddleware, async (req, res) => {
         res.cookie("role", "", {
             maxAge: 0, // 6 hours
             httpOnly: true,
+            domain: DOMAIN,
+
             // secure:true ,  To be uncommented when out of localhost,
             sameSite: 'Strict'
         })
@@ -27,6 +31,8 @@ router.get("/logout", sharedAccessMiddleware, async (req, res) => {
         res.cookie('id', '', {
             maxAge: 0, // 6 hours
             httpOnly: true,
+            domain: DOMAIN,
+
             // secure:true ,  To be uncommented when out of localhost,
             sameSite: 'Strict'
         })
@@ -326,21 +332,27 @@ router.post("/GoogleSignUp", async (req, res) => {
             maxAge: 3600000, // 1 hour
             httpOnly: true,
             //secure:true ,  //To be uncommented when out of localhost,
-            sameSite: 'Strict'
+            sameSite: 'Strict',
+            domain: DOMAIN,
+
         })
 
         res.cookie("role", `${userType === "creator" ? "creator" : "user"}`, {
             maxAge: 3600000, // 1 hour
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
-            sameSite: 'Strict'
+            sameSite: 'Strict',
+            domain: DOMAIN,
+
         })
 
         res.cookie('id', userDocument.customId, {
             maxAge: 3600000, // 1 hour
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
-            sameSite: 'Strict'
+            sameSite: 'Strict',
+            domain: DOMAIN,
+
         })
 
 
@@ -412,21 +424,27 @@ router.post("/GoogleSignIn", async (req, res) => {
             maxAge: 3600000, // 6 hours
             httpOnly: true,
             //secure:true ,  //To be uncommented when out of localhost,
-            sameSite: 'Strict'
+            sameSite: 'Strict',
+            domain: DOMAIN,
+
         })
 
         res.cookie("role", `${userType === "creator" ? "creator" : "user"}`, {
             maxAge: 3600000, // 6 hours
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
-            sameSite: 'Strict'
+            sameSite: 'Strict',
+            domain: DOMAIN,
+
         })
 
         res.cookie('id', userDocument.customId, {
             maxAge: 3600000, // 6 hours
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
-            sameSite: 'Strict'
+            sameSite: 'Strict',
+            domain: DOMAIN,
+
         })
 
         res.status(200).json({ message: `${userType} logged in` })

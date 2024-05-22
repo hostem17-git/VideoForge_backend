@@ -5,7 +5,7 @@ const jwt = require("jsonwebtoken");
 const zod = require("zod");
 const bcrypt = require("bcrypt");
 const { validate } = require('uuid');
-const { JOB_SCHEMA_OPTIONS } = require('../config')
+const { JOB_SCHEMA_OPTIONS, DOMAIN } = require('../config')
 const mongoose = require("mongoose");
 const { route } = require('./admin');
 const { S3Client, PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3")
@@ -147,6 +147,7 @@ router.post("/SignIn", async (req, res) => {
             maxAge: 3600000, // 6 hours
             httpOnly: true,
             //secure:true ,  //To be uncommented when out of localhost,
+            domain: DOMAIN,
             sameSite: 'Strict'
         })
 
@@ -154,11 +155,15 @@ router.post("/SignIn", async (req, res) => {
             maxAge: 3600000, // 6 hours
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
+            domain: DOMAIN,
+
             sameSite: 'Strict'
         })
 
         res.cookie('id', influencer.customId, {
             maxAge: 3600000, // 6 hours
+            domain: DOMAIN,
+
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
             sameSite: 'Strict'
