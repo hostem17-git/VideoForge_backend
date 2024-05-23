@@ -13,6 +13,8 @@ const { S3Client, PutObjectCommand, GetObjectCommand } = require("@aws-sdk/clien
 const cuid = require("cuid");
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
+const { OAuth2Client } = require('google-auth-library')
+
 const router = Router();
 
 const client = new S3Client({
@@ -23,7 +25,9 @@ const client = new S3Client({
     }
 })
 
-
+const oAuth2ClientGoogle = new OAuth2Client(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET,
+    "postmessage"
+)
 const emailSchema = zod.string().email();
 
 const socialSchema = zod.object({
@@ -542,7 +546,6 @@ router.get("/job/:jobId", influencerMiddleware, async (req, res) => {
     }
 });
 
-
 router.get("/myjobs", influencerMiddleware, async (req, res) => {
     try {
         const influencer = res.locals.influencerDocument;
@@ -767,7 +770,6 @@ router.put("/approveFile", influencerMiddleware, async (req, res) => {
     }
 })
 
-
 router.put("/downloadPreSigner", influencerMiddleware, async (req, res) => {
     try {
         const { jobId, key } = req.body;
@@ -823,5 +825,14 @@ router.put("/downloadPreSigner", influencerMiddleware, async (req, res) => {
 
 )
 
+router.post("/auth/google", influencerMiddleware, async (req, res) => {
+
+    const { tokens } = await oAuth2ClientGoogle.getToken(req.body.code);
+
+    console.log(tokens);
+
+    res.status(200).json(tokens);
+
+});
 
 module.exports = router;
