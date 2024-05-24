@@ -152,7 +152,7 @@ router.post("/SignIn", async (req, res) => {
             httpOnly: true,
             //secure:true ,  //To be uncommented when out of localhost,
             domain: DOMAIN,
-            sameSite: "None"
+            sameSite: "lax"
         })
 
         res.cookie("role", "creator", {
@@ -161,7 +161,7 @@ router.post("/SignIn", async (req, res) => {
             // secure:true ,  To be uncommented when out of localhost,
             domain: DOMAIN,
 
-            sameSite: "None"
+            sameSite: "lax"
         })
 
         res.cookie('id', influencer.customId, {
@@ -170,7 +170,7 @@ router.post("/SignIn", async (req, res) => {
 
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
-            sameSite: "None"
+            sameSite: "lax"
         })
 
         res.status(200).json({ message: "influencer logged in" })
