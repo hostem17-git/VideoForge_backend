@@ -103,7 +103,6 @@ router.post("/SignIn", async (req, res) => {
 
         res.cookie("token", token, {
             maxAge: 3600000, // 6 hours
-            domain: DOMAIN,
             httpOnly: true,
             //secure:true ,  //To be uncommented when out of localhost,
             sameSite: "lax"
@@ -114,7 +113,6 @@ router.post("/SignIn", async (req, res) => {
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
             sameSite: "lax",
-            domain: DOMAIN,
 
         })
 
@@ -123,7 +121,6 @@ router.post("/SignIn", async (req, res) => {
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
             sameSite: "lax",
-            domain: DOMAIN,
 
         })
 

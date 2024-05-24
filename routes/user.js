@@ -103,7 +103,6 @@ router.post("/SignIn", async (req, res) => {
             httpOnly: true,
             //secure:true ,  //To be uncommented when out of localhost,
             sameSite: "lax",
-            domain: DOMAIN,
 
         })
 
@@ -112,7 +111,6 @@ router.post("/SignIn", async (req, res) => {
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
             sameSite: "lax",
-            domain: DOMAIN,
 
         })
 
@@ -121,7 +119,6 @@ router.post("/SignIn", async (req, res) => {
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
             sameSite: "lax",
-            domain: DOMAIN,
 
         })
 

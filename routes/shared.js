@@ -13,7 +13,6 @@ router.get("/logout", sharedAccessMiddleware, async (req, res) => {
         res.cookie("token", '', {
             maxAge: 0, // 6 hours
             httpOnly: true,
-            domain: DOMAIN,
 
             //secure:true ,  //To be uncommented when out of localhost,
             sameSite: "lax"
@@ -22,7 +21,6 @@ router.get("/logout", sharedAccessMiddleware, async (req, res) => {
         res.cookie("role", "", {
             maxAge: 0, // 6 hours
             httpOnly: true,
-            domain: DOMAIN,
 
             // secure:true ,  To be uncommented when out of localhost,
             sameSite: "lax"
@@ -31,7 +29,6 @@ router.get("/logout", sharedAccessMiddleware, async (req, res) => {
         res.cookie('id', '', {
             maxAge: 0, // 6 hours
             httpOnly: true,
-            domain: DOMAIN,
 
             // secure:true ,  To be uncommented when out of localhost,
             sameSite: "lax"
@@ -333,7 +330,6 @@ router.post("/GoogleSignUp", async (req, res) => {
             httpOnly: true,
             //secure:true ,  //To be uncommented when out of localhost,
             sameSite: "lax",
-            domain: DOMAIN,
 
         })
 
@@ -342,7 +338,6 @@ router.post("/GoogleSignUp", async (req, res) => {
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
             sameSite: "lax",
-            domain: DOMAIN,
 
         })
 
@@ -351,7 +346,6 @@ router.post("/GoogleSignUp", async (req, res) => {
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
             sameSite: "lax",
-            domain: DOMAIN,
 
         })
 
@@ -425,7 +419,6 @@ router.post("/GoogleSignIn", async (req, res) => {
             httpOnly: true,
             //secure:true ,  //To be uncommented when out of localhost,
             sameSite: "lax",
-            domain: DOMAIN,
 
         })
 
@@ -434,7 +427,6 @@ router.post("/GoogleSignIn", async (req, res) => {
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
             sameSite: "lax",
-            domain: DOMAIN,
 
         })
 
@@ -443,7 +435,6 @@ router.post("/GoogleSignIn", async (req, res) => {
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
             sameSite: "lax",
-            domain: DOMAIN,
 
         })
 

@@ -151,7 +151,6 @@ router.post("/SignIn", async (req, res) => {
             maxAge: 3600000, // 6 hours
             httpOnly: true,
             //secure:true ,  //To be uncommented when out of localhost,
-            domain: DOMAIN,
             sameSite: "lax"
         })
 
@@ -159,14 +158,12 @@ router.post("/SignIn", async (req, res) => {
             maxAge: 3600000, // 6 hours
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
-            domain: DOMAIN,
 
             sameSite: "lax"
         })
 
         res.cookie('id', influencer.customId, {
             maxAge: 3600000, // 6 hours
-            domain: DOMAIN,
 
             // httpOnly: true,
             // secure:true ,  To be uncommented when out of localhost,
