@@ -9,11 +9,13 @@ const { JOB_SCHEMA_OPTIONS, DOMAIN } = require('../config')
 const mongoose = require("mongoose");
 const { route } = require('./admin');
 const { S3Client, PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3")
-
 const cuid = require("cuid");
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
-const { OAuth2Client } = require('google-auth-library')
+const { OAuth2Client, UserRefreshClient } = require('google-auth-library');
+
+const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
+
 
 const router = Router();
 
@@ -25,9 +27,71 @@ const client = new S3Client({
     }
 })
 
+
+const lambdaClient = new LambdaClient({
+    region: 'ap-south-1',
+    credentials: {
+        accessKeyId: process.env.AWS_LAMBDA_ACCESS_KEY,
+        secretAccessKey: process.env.AWS_LAMBDA_SECRET_KEY
+    }
+});
+
 const oAuth2ClientGoogle = new OAuth2Client(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET,
     "postmessage"
 )
+
+
+const getAccessToken = async (influencer, res, req, session) => {
+    const expiry = new Date(influencer.googleAccessTokenExpiry).getTime();
+    const present = new Date.getTime();
+
+    if (expiry > present + 5 * 60 * 10000) {// 5 minutes till acccess token expires
+        return influencer.googleAccessToken;
+    } else {
+        let session;
+        try {
+            const user = new UserRefreshClient(
+                process.env.GOOGLE_CLIENT_ID,
+                process.env.GOOGLE_CLIENT_SECRET,
+                req.body.refreshToken,
+            );
+            const { tokens } = await user.refreshAccessToken(); // optain new tokens
+
+            session = await mongoose.startSession();
+
+            if (!session) {
+                return res.status(500).json({ error: "Error initiaing a DB session" })
+            }
+
+            session.startTransaction();
+
+            const expiry_date = new Date(tokens.expiry_date)
+
+            influencer.googleAccessToken = tokens.access_token;
+            influencer.googleAccessTokenExpiry = expiry_date;
+            influencer.googleAcessScope = tokens.scope;
+
+            await influencer.save();
+
+            session.commitTransaction();
+            session.endSession();
+
+            return tokens.access_token
+        } catch (error) {
+            console.log("Influencer google authorization refresh token error", error);
+            throw error;
+            if (session) {
+                await session.abortTransaction();
+                session.endSession();
+            }
+        } finally {
+            if (session)
+                session.endSession();
+        }
+
+    }
+}
+
 const emailSchema = zod.string().email();
 
 const socialSchema = zod.object({
@@ -186,7 +250,7 @@ router.post("/reset-password", async (req, res) => {
 })
 
 // To create a new job
-//  Check if we need to refetch influecnver document as owner or not
+//  Check if we need to refetch influencer document as owner or not
 router.post("/createjob", influencerMiddleware, async (req, res) => {
     let session;
     try {
@@ -647,7 +711,7 @@ router.put("/uploadPreSigner", influencerMiddleware, async (req, res) => {
         })
     } catch (error) {
         console.log("Influencer get uploadePreSigner Error", error);
-        res.status(500).json({ error: error })
+        res.status(500).json({ error: "Internal server error" })
     }
 })
 
@@ -698,7 +762,7 @@ router.put("/updateFileKey", influencerMiddleware, async (req, res) => {
 
     } catch (error) {
         console.log("influencer update file key error", error);
-        res.status(500).json({ error })
+        res.status(500).json({ error: "Internal server error" })
         if (session) {
             await session.abortTransaction();
             session.endSession();
@@ -719,13 +783,11 @@ router.put("/approveFile", influencerMiddleware, async (req, res) => {
         if (!jobId)
             return res.status(400).json({ error: "job id not provided" });
 
-
         const influencer = res.locals.influencerDocument;
         const job = await Job.findOne({ customId: jobId, owner: influencer._id })
 
         if (!job)
             return res.status(400).json({ error: "no owned job with provided job id" })
-
 
         let editedFiles = job.editedFiles;
 
@@ -736,8 +798,6 @@ router.put("/approveFile", influencerMiddleware, async (req, res) => {
 
         editedFiles = editedFiles.filter(file => file.key !== key)
         session = await mongoose.startSession();
-
-
 
         if (!session) {
             return res.status(500).json({ error: "Error initiaing a DB session" })
@@ -752,11 +812,11 @@ router.put("/approveFile", influencerMiddleware, async (req, res) => {
         await job.save();
         session.commitTransaction();
         session.endSession();
-        return res.status(200).json({ message: "file uploaded successfully" })
+        return res.status(200).json({ message: "file approved successfully" })
 
     } catch (error) {
         console.log("influencer update file key error", error);
-        res.status(500).json({ error })
+        res.status(500).json({ error: "Internal server error" })
         if (session) {
             await session.abortTransaction();
             session.endSession();
@@ -819,17 +879,257 @@ router.put("/downloadPreSigner", influencerMiddleware, async (req, res) => {
         res.status(500).json(error)
     }
 }
-
 )
 
-router.post("/auth/google", influencerMiddleware, async (req, res) => {
+router.get("/checkAuthorized", influencerMiddleware, async (req, res) => {
+    try {
 
-    const { tokens } = await oAuth2ClientGoogle.getToken(req.body.code);
+        const influencer = res.locals.influencerDocument;
 
-    console.log(tokens);
+        if (influencer.googleAccessToken && influencer.refreshAccessToken) {
+            return res.status(200).json({ message: "authorized" })
+        }
 
-    res.status(200).json(tokens);
+        res.status(403).json({ error: "not authorised" })
 
+    } catch (error) {
+        console.log("influencer check authorized error", error);
+        res.status(500).json({ error: "Internal server error" })
+    }
 });
+
+router.put("/uploadToYoutube", influencerMiddleware, async (req, res) => {
+    const Bucket = process.env.AWS_BUCKET;
+    let session;
+    try {
+        const { key, jobId, title, description, categoryId } = req.body;
+        console.log(key); console.log(jobId); console.log(title), console.log(description); console.log(categoryId);
+
+        if (!key)
+            return res.status(400).json({ error: "key not provided" });
+        if (!jobId)
+            return res.status(400).json({ error: "job id not provided" });
+        if (!title)
+            return res.status(400).json({ error: "title not provided" });
+        if (!description)
+            return res.status(400).json({ error: "description id not provided" });
+        if (!categoryId)
+            return res.status(400).json({ error: "category id not provided" });
+
+        const influencer = res.locals.influencerDocument;
+
+        const job = await Job.findOne({ customId: jobId, owner: influencer._id })
+        if (!job)
+            return res.status(400).json({ error: "no owned job with provided job id" })
+
+        let finalFile = job.finalFiles.filter(file => file.key === key);
+
+        if (finalFile.length === 0)
+            return res.status(400).json({ error: "provided file not in final files list" })
+
+        const expiry = new Date(influencer.googleAccessTokenExpiry).getTime();
+        const present = new Date().getTime();
+
+        let accessToken;
+
+        
+        console.log(influencer.googleRefreshToken)
+
+
+        if (expiry > present + 5 * 60 * 10000) {// 5 minutes till acccess token expires
+            accessToken = influencer.googleAccessToken;
+        } else {
+            let session;
+            try {
+                const user = new UserRefreshClient(
+                    process.env.GOOGLE_CLIENT_ID,
+                    process.env.GOOGLE_CLIENT_SECRET,
+                    influencer.googleRefreshToken
+                );
+                console.log("user", user)
+
+                const { tokens } = await user.refreshAccessToken(); // optain new tokens
+
+                console.log(tokens);
+                session = await mongoose.startSession();
+
+                if (!session) {
+                    return res.status(500).json({ error: "Error initiaing a DB session" })
+                }
+                session.startTransaction();
+
+                console.log(tokens);
+                // console.log(tokens)
+                const expiry_date = new Date(tokens.expiry_date)
+
+                influencer.googleAccessToken = tokens.access_token;
+                influencer.googleAccessTokenExpiry = expiry_date;
+                influencer.googleAcessScope = tokens.scope;
+
+                await influencer.save();
+
+                session.commitTransaction();
+                session.endSession();
+
+                accessToken = tokens.access_token
+            } catch (error) {
+                console.log("Influencer google authorization refresh token error", error);
+                if (session) {
+                    await session.abortTransaction();
+                    session.endSession();
+                }
+                return res.status(500).json({ error: "Internal server error" })
+
+            } finally {
+                if (session)
+                    session.endSession();
+            }
+
+        }
+
+        session = await mongoose.startSession();
+
+        if (!session) {
+            return res.status(500).json({ error: "Error initiaing a DB session" })
+        }
+
+        session.startTransaction();
+        job.Stage = "uploaded"
+        // Calling AWS.
+
+        const jwt_token = jwt.sign({
+            email: influencer.email.trim(),
+            role: "influencer",
+        }, process.env.AWS_JWT_SECRET,
+            { expiresIn: JWT_LIFE }
+        )
+
+        const params = {
+            FunctionName: 'videoForge_upload_youtube', // Replace with your Lambda function name
+            InvocationType: 'RequestResponse',
+            Payload: JSON.stringify({ youtube_access_token, Bucket, key, jwt_token, title, description, categoryId })
+        };
+
+
+        // TODO: get token
+        const command = new InvokeCommand(params);
+        const result = await lambdaClient.send(command);
+        const payload = JSON.parse(Buffer.from(result.Payload).toString());
+        res.status(200).json(payload);
+
+        await job.save();
+
+        session.commitTransaction();
+
+
+        session.endSession();
+        return res.status(200).json({ message: "file uploaded successfully" })
+
+    } catch (error) {
+        console.log("influencer upload to youtube key error", error);
+        res.status(500).json({ error: "Internal server error" })
+        if (session) {
+            await session.abortTransaction();
+            session.endSession();
+        }
+    } finally {
+        if (session)
+            session.endSession();
+    }
+})
+
+router.post("/auth/google", influencerMiddleware, async (req, res) => {
+    let session;
+    try {
+        const { tokens } = await oAuth2ClientGoogle.getToken(req.body.code);
+
+        console.log(tokens);
+
+        const influencer = res.locals.influencerDocument;
+
+        session = await mongoose.startSession();
+
+        if (!session) {
+            return res.status(500).json({ error: "Error initiaing a DB session" })
+        }
+
+        session.startTransaction();
+
+        const expiry_date = new Date(tokens.expiry_date)
+
+        influencer.googleAccessToken = tokens.access_token;
+        influencer.googleAccessTokenExpiry = expiry_date;
+        influencer.googleRefreshToken = tokens.refresh_token;
+        influencer.googleAcessScope = tokens.scope;
+
+        await influencer.save();
+
+        session.commitTransaction();
+        session.endSession();
+
+        res.status(200).json(tokens);
+    } catch (error) {
+        console.log("Influencer google authorization error", error);
+        res.status(500).json({ error: "Internal server error" });
+        if (session) {
+            await session.abortTransaction();
+            session.endSession();
+        }
+    } finally {
+        if (session)
+            session.endSession();
+    }
+});
+
+router.post('/auth/google/refresh-token', async (req, res) => {
+
+    let session;
+    try {
+        const user = new UserRefreshClient(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            req.body.refreshToken,
+        );
+        const { tokens } = await user.refreshAccessToken(); // optain new tokens
+        // res.json(tokens);
+        console.log(tokens)
+
+        const influencer = res.locals.influencerDocument;
+        session = await mongoose.startSession();
+
+        if (!session) {
+            return res.status(500).json({ error: "Error initiaing a DB session" })
+        }
+
+        const accessToken = getAccessToken(influencer, res, req)
+
+        session.startTransaction();
+
+        const expiry_date = new Date(tokens.expiry_date)
+
+        influencer.googleAccessToken = tokens.access_token;
+        influencer.googleAccessTokenExpiry = expiry_date;
+        // influencer.googleRefreshToken = tokens.refresh_token;
+        influencer.googleAcessScope = tokens.scope;
+
+        await influencer.save();
+
+        session.commitTransaction();
+        session.endSession();
+
+        res.status(200).json(tokens);
+    } catch (error) {
+        console.log("Influencer google authorization error", error);
+        res.status(500).json({ error: "Internal server error" });
+        if (session) {
+            await session.abortTransaction();
+            session.endSession();
+        }
+    } finally {
+        if (session)
+            session.endSession();
+    }
+
+})
 
 module.exports = router;

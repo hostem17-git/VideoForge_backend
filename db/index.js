@@ -70,7 +70,12 @@ const InfluencerSchema = new mongoose.Schema({
     },
     suspendedOn: Date,
     SuspensionReason: String,
-    tags: [String]
+    tags: [String],
+    googleAcessScope: String,
+    googleRefreshToken: String,
+    googleAccessToken: String,
+    googleAccessModifiedOn: String,
+    googleAccessTokenExpiry: String
 })
 
 // userSchame
@@ -106,7 +111,7 @@ const UserSchema = new mongoose.Schema({
     suspendedOn: Date,
     SuspensionReason: String,
 
-}, { timestamps:true})
+}, { timestamps: true })
 
 const JobSchema = new mongoose.Schema({
     owner: {
@@ -159,7 +164,7 @@ const JobSchema = new mongoose.Schema({
     CloseReason: String,
     Stage: {
         type: String,
-        enum: ["new", "started", "closed", "suspended"],
+        enum: ["new", "started", "closed", "suspended", "uploaded"],
         default: "new"
     },
     customId: {

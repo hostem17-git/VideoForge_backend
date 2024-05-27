@@ -343,7 +343,7 @@ router.put("/uploadPreSigner", userMiddleware, async (req, res) => {
         })
     } catch (error) {
         console.log("user get uploadePreSigner Error", error);
-        res.status(500).json({ error: error })
+        res.status(500).json({ error: "Internal server error" })
     }
 })
 
@@ -395,7 +395,7 @@ router.put("/updateFileKey", userMiddleware, async (req, res) => {
 
     } catch (error) {
         console.log("user update file key error", error);
-        res.status(500).json({ error })
+        res.status(500).json({ error: "Internal server error" })
         if (session) {
             await session.abortTransaction();
             session.endSession();
