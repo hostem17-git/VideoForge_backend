@@ -40,58 +40,6 @@ const oAuth2ClientGoogle = new OAuth2Client(process.env.GOOGLE_CLIENT_ID, proces
     "postmessage"
 )
 
-
-const getAccessToken = async (influencer, res, req, session) => {
-    const expiry = new Date(influencer.googleAccessTokenExpiry).getTime();
-    const present = new Date.getTime();
-
-    if (expiry > present + 5 * 60 * 10000) {// 5 minutes till acccess token expires
-        return influencer.googleAccessToken;
-    } else {
-        let session;
-        try {
-            const user = new UserRefreshClient(
-                process.env.GOOGLE_CLIENT_ID,
-                process.env.GOOGLE_CLIENT_SECRET,
-                req.body.refreshToken,
-            );
-            const { tokens } = await user.refreshAccessToken(); // optain new tokens
-
-            session = await mongoose.startSession();
-
-            if (!session) {
-                return res.status(500).json({ error: "Error initiaing a DB session" })
-            }
-
-            session.startTransaction();
-
-            const expiry_date = new Date(tokens.expiry_date)
-
-            influencer.googleAccessToken = tokens.access_token;
-            influencer.googleAccessTokenExpiry = expiry_date;
-            influencer.googleAcessScope = tokens.scope;
-
-            await influencer.save();
-
-            session.commitTransaction();
-            session.endSession();
-
-            return tokens.access_token
-        } catch (error) {
-            console.log("Influencer google authorization refresh token error", error);
-            throw error;
-            if (session) {
-                await session.abortTransaction();
-                session.endSession();
-            }
-        } finally {
-            if (session)
-                session.endSession();
-        }
-
-    }
-}
-
 const emailSchema = zod.string().email();
 
 const socialSchema = zod.object({
@@ -109,13 +57,6 @@ const jobSchema = zod.object({
         )
     })
 })
-
-// only to be called after verification
-function tokenDecoder(token) {
-
-    const decodedValue = jwt.decode(token, process.env.JWT_SECRET);
-    return decodedValue;
-}
 
 function verifyEmail(email) {
     const response = emailSchema.safeParse(email);
@@ -881,25 +822,8 @@ router.put("/downloadPreSigner", influencerMiddleware, async (req, res) => {
 }
 )
 
-router.get("/checkAuthorized", influencerMiddleware, async (req, res) => {
-    try {
-
-        const influencer = res.locals.influencerDocument;
-
-        if (influencer.googleAccessToken && influencer.refreshAccessToken) {
-            return res.status(200).json({ message: "authorized" })
-        }
-
-        res.status(403).json({ error: "not authorised" })
-
-    } catch (error) {
-        console.log("influencer check authorized error", error);
-        res.status(500).json({ error: "Internal server error" })
-    }
-});
-
-
 router.put("/uploadToYoutube", influencerMiddleware, async (req, res) => {
+    // TODO: Fix youtube title and description
     const Bucket = process.env.AWS_BUCKET;
     let session;
     try {
@@ -928,61 +852,16 @@ router.put("/uploadToYoutube", influencerMiddleware, async (req, res) => {
         const present = new Date().getTime();
         let accessToken = influencer.googleAccessToken;
 
-        if (expiry <= present + 5 * 60 * 1000) { // 5 minutes till access token expires
-            try {
-                const user = new UserRefreshClient(
-                    process.env.GOOGLE_CLIENT_ID,
-                    process.env.GOOGLE_CLIENT_SECRET,
-                    influencer.googleRefreshToken
-                );
-
-                const { credentials } = await user.refreshAccessToken(); // obtain new tokens
-
-                session = await mongoose.startSession()
-
-                if (!session) {
-                    return res.status(500).json({ error: "Error initiaing a DB session" })
-                }
-                session.startTransaction();
-
-                influencer.googleAccessToken = credentials.access_token;
-                influencer.googleAccessTokenExpiry = new Date(credentials.expiry_date);
-                influencer.googleAccessScope = credentials.scope;
-
-                await influencer.save({ session });
-
-                await session.commitTransaction();
-                session.endSession();
-
-
-                accessToken = credentials.access_token;
-            } catch (error) {
-                console.error("Influencer google authorization refresh token error", error);
-                if (session) {
-                    session.endSession();
-                    session.abortTransaction();
-                }
-                return res.status(500).json({ error: "Internal server error" });
-
-            } finally {
-                if (session) {
-                    session.endSession()
-                }
-            }
+        if (expiry <= present + 10 * 60 * 1000) { // 10 minutes till access token expires
+            return res.status(400).json({ error: "access token expired" })
         }
-        console.log("accessToken")
-        console.log(accessToken)
+
         // Calling AWS Lambda
         const jwtToken = jwt.sign(
             { email: influencer.email.trim(), role: "influencer" },
             process.env.AWS_JWT_SECRET,
             { expiresIn: JWT_LIFE }
         );
-        console.log("jwtToken")
-        console.log(jwtToken)
-        console.log("Bucket", Bucket);
-        console.log("key", key)
-
 
         const params = {
             FunctionName: 'videoForge_upload_youtube', // Replace with your Lambda function name
@@ -997,12 +876,8 @@ router.put("/uploadToYoutube", influencerMiddleware, async (req, res) => {
                 categoryId
             })
         };
-
-
-        console.log(params);
         const command = new InvokeCommand(params);
         const result = await lambdaClient.send(command);
-        console.log("Result", result);
         const payload = JSON.parse(Buffer.from(result.Payload).toString());
         console.log("payload", payload)
         session = await mongoose.startSession();
@@ -1028,6 +903,7 @@ router.put("/uploadToYoutube", influencerMiddleware, async (req, res) => {
         }
     }
 });
+
 router.post("/auth/google", influencerMiddleware, async (req, res) => {
     let session;
     try {
@@ -1057,7 +933,7 @@ router.post("/auth/google", influencerMiddleware, async (req, res) => {
         session.commitTransaction();
         session.endSession();
 
-        res.status(200).json(tokens);
+        res.status(200).json({ message: "authorization tokens received" });
     } catch (error) {
         console.log("Influencer google authorization error", error);
         res.status(500).json({ error: "Internal server error" });
@@ -1071,43 +947,47 @@ router.post("/auth/google", influencerMiddleware, async (req, res) => {
     }
 });
 
-router.post('/auth/google/refresh-token', async (req, res) => {
-
+router.post('/auth/google/refresh-token', influencerMiddleware, async (req, res) => {
     let session;
     try {
-        const user = new UserRefreshClient(
-            process.env.GOOGLE_CLIENT_ID,
-            process.env.GOOGLE_CLIENT_SECRET,
-            req.body.refreshToken,
-        );
-        const { tokens } = await user.refreshAccessToken(); // optain new tokens
-        // res.json(tokens);
-        console.log(tokens)
 
         const influencer = res.locals.influencerDocument;
-        session = await mongoose.startSession();
-
-        if (!session) {
-            return res.status(500).json({ error: "Error initiaing a DB session" })
+        if (!influencer.googleAccessToken || !influencer.googleRefreshToken) {
+            return res.status(400).json({ message: "authorization needed" })
         }
 
-        const accessToken = getAccessToken(influencer, res, req)
 
-        session.startTransaction();
+        const expiry = new Date(influencer.googleAccessTokenExpiry).getTime();
+        const present = new Date().getTime();
 
-        const expiry_date = new Date(tokens.expiry_date)
+        if (expiry <= present + 10 * 60 * 1000) {
+            const user = new UserRefreshClient(
+                process.env.GOOGLE_CLIENT_ID,
+                process.env.GOOGLE_CLIENT_SECRET,
+                influencer.googleRefreshToken
+            );
+            const { credentials } = await user.refreshAccessToken(); // optain new tokens
 
-        influencer.googleAccessToken = tokens.access_token;
-        influencer.googleAccessTokenExpiry = expiry_date;
-        // influencer.googleRefreshToken = tokens.refresh_token;
-        influencer.googleAcessScope = tokens.scope;
+            session = await mongoose.startSession();
 
-        await influencer.save();
+            if (!session) {
+                return res.status(500).json({ error: "Error initiaing a DB session" })
+            }
 
-        session.commitTransaction();
-        session.endSession();
+            session.startTransaction();
 
-        res.status(200).json(tokens);
+            influencer.googleAccessToken = credentials.access_token;
+            influencer.googleAccessTokenExpiry = new Date(credentials.expiry_date);
+            influencer.googleAcessScope = credentials.scope;
+
+            await influencer.save();
+
+            session.commitTransaction();
+            session.endSession();
+
+        }
+
+        res.status(200).json({ message: "tokens updated" });
     } catch (error) {
         console.log("Influencer google authorization error", error);
         res.status(500).json({ error: "Internal server error" });
@@ -1121,5 +1001,6 @@ router.post('/auth/google/refresh-token', async (req, res) => {
     }
 
 })
+
 
 module.exports = router;
