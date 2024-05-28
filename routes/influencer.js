@@ -5,7 +5,7 @@ const jwt = require("jsonwebtoken");
 const zod = require("zod");
 const bcrypt = require("bcrypt");
 const { validate } = require('uuid');
-const { JOB_SCHEMA_OPTIONS, DOMAIN } = require('../config')
+const { JOB_SCHEMA_OPTIONS, DOMAIN, JWT_LIFE } = require('../config')
 const mongoose = require("mongoose");
 const { route } = require('./admin');
 const { S3Client, PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3")
@@ -898,146 +898,136 @@ router.get("/checkAuthorized", influencerMiddleware, async (req, res) => {
     }
 });
 
+
 router.put("/uploadToYoutube", influencerMiddleware, async (req, res) => {
     const Bucket = process.env.AWS_BUCKET;
     let session;
     try {
         const { key, jobId, title, description, categoryId } = req.body;
-        console.log(key); console.log(jobId); console.log(title), console.log(description); console.log(categoryId);
 
-        if (!key)
-            return res.status(400).json({ error: "key not provided" });
-        if (!jobId)
-            return res.status(400).json({ error: "job id not provided" });
-        if (!title)
-            return res.status(400).json({ error: "title not provided" });
-        if (!description)
-            return res.status(400).json({ error: "description id not provided" });
-        if (!categoryId)
-            return res.status(400).json({ error: "category id not provided" });
+        // Validate request body
+        if (!key || !jobId || !title || !description || !categoryId) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
 
         const influencer = res.locals.influencerDocument;
 
-        const job = await Job.findOne({ customId: jobId, owner: influencer._id })
-        if (!job)
-            return res.status(400).json({ error: "no owned job with provided job id" })
+        // Find the job
+        const job = await Job.findOne({ customId: jobId, owner: influencer._id });
+        if (!job) {
+            return res.status(400).json({ error: "No owned job with provided job id" });
+        }
 
-        let finalFile = job.finalFiles.filter(file => file.key === key);
-
-        if (finalFile.length === 0)
-            return res.status(400).json({ error: "provided file not in final files list" })
+        // Check if the file is in final files list
+        const finalFile = job.finalFiles.find(file => file.key === key);
+        if (!finalFile) {
+            return res.status(400).json({ error: "Provided file not in final files list" });
+        }
 
         const expiry = new Date(influencer.googleAccessTokenExpiry).getTime();
         const present = new Date().getTime();
+        let accessToken = influencer.googleAccessToken;
 
-        let accessToken;
-
-        
-        console.log(influencer.googleRefreshToken)
-
-
-        if (expiry > present + 5 * 60 * 10000) {// 5 minutes till acccess token expires
-            accessToken = influencer.googleAccessToken;
-        } else {
-            let session;
+        if (expiry <= present + 5 * 60 * 1000) { // 5 minutes till access token expires
             try {
                 const user = new UserRefreshClient(
                     process.env.GOOGLE_CLIENT_ID,
                     process.env.GOOGLE_CLIENT_SECRET,
                     influencer.googleRefreshToken
                 );
-                console.log("user", user)
 
-                const { tokens } = await user.refreshAccessToken(); // optain new tokens
+                const { credentials } = await user.refreshAccessToken(); // obtain new tokens
 
-                console.log(tokens);
-                session = await mongoose.startSession();
+                session = await mongoose.startSession()
 
                 if (!session) {
                     return res.status(500).json({ error: "Error initiaing a DB session" })
                 }
                 session.startTransaction();
 
-                console.log(tokens);
-                // console.log(tokens)
-                const expiry_date = new Date(tokens.expiry_date)
+                influencer.googleAccessToken = credentials.access_token;
+                influencer.googleAccessTokenExpiry = new Date(credentials.expiry_date);
+                influencer.googleAccessScope = credentials.scope;
 
-                influencer.googleAccessToken = tokens.access_token;
-                influencer.googleAccessTokenExpiry = expiry_date;
-                influencer.googleAcessScope = tokens.scope;
+                await influencer.save({ session });
 
-                await influencer.save();
-
-                session.commitTransaction();
+                await session.commitTransaction();
                 session.endSession();
 
-                accessToken = tokens.access_token
+
+                accessToken = credentials.access_token;
             } catch (error) {
-                console.log("Influencer google authorization refresh token error", error);
+                console.error("Influencer google authorization refresh token error", error);
                 if (session) {
-                    await session.abortTransaction();
                     session.endSession();
+                    session.abortTransaction();
                 }
-                return res.status(500).json({ error: "Internal server error" })
+                return res.status(500).json({ error: "Internal server error" });
 
             } finally {
-                if (session)
-                    session.endSession();
+                if (session) {
+                    session.endSession()
+                }
             }
-
         }
-
-        session = await mongoose.startSession();
-
-        if (!session) {
-            return res.status(500).json({ error: "Error initiaing a DB session" })
-        }
-
-        session.startTransaction();
-        job.Stage = "uploaded"
-        // Calling AWS.
-
-        const jwt_token = jwt.sign({
-            email: influencer.email.trim(),
-            role: "influencer",
-        }, process.env.AWS_JWT_SECRET,
+        console.log("accessToken")
+        console.log(accessToken)
+        // Calling AWS Lambda
+        const jwtToken = jwt.sign(
+            { email: influencer.email.trim(), role: "influencer" },
+            process.env.AWS_JWT_SECRET,
             { expiresIn: JWT_LIFE }
-        )
+        );
+        console.log("jwtToken")
+        console.log(jwtToken)
+        console.log("Bucket", Bucket);
+        console.log("key", key)
+
 
         const params = {
             FunctionName: 'videoForge_upload_youtube', // Replace with your Lambda function name
             InvocationType: 'RequestResponse',
-            Payload: JSON.stringify({ youtube_access_token, Bucket, key, jwt_token, title, description, categoryId })
+            Payload: JSON.stringify({
+                youtube_access_token: accessToken,
+                s3_bucket_name: Bucket,
+                s3_file_key: key,
+                jwt_token: jwtToken,
+                title,
+                description,
+                categoryId
+            })
         };
 
 
-        // TODO: get token
+        console.log(params);
         const command = new InvokeCommand(params);
         const result = await lambdaClient.send(command);
+        console.log("Result", result);
         const payload = JSON.parse(Buffer.from(result.Payload).toString());
-        res.status(200).json(payload);
+        console.log("payload", payload)
+        session = await mongoose.startSession();
+        session.startTransaction();
 
-        await job.save();
+        job.Stage = "uploaded";
+        await job.save({ session });
 
-        session.commitTransaction();
-
-
-        session.endSession();
-        return res.status(200).json({ message: "file uploaded successfully" })
+        await session.commitTransaction();
+        session.endSession()
+        return res.status(200).json(payload);
 
     } catch (error) {
-        console.log("influencer upload to youtube key error", error);
-        res.status(500).json({ error: "Internal server error" })
+        console.error("Influencer upload to youtube key error", error);
         if (session) {
-            await session.abortTransaction();
             session.endSession();
+            session.abortTransaction();
         }
+        return res.status(500).json({ error: "Internal server error" });
     } finally {
-        if (session)
-            session.endSession();
+        if (session) {
+            session.endSession()
+        }
     }
-})
-
+});
 router.post("/auth/google", influencerMiddleware, async (req, res) => {
     let session;
     try {

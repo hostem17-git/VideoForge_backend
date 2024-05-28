@@ -3,6 +3,7 @@ const sharedAccessMiddleware = require("../middleware/shared");
 const { User, Influencer, Job } = require('../db/index');
 const jwt = require("jsonwebtoken");
 const { default: mongoose } = require("mongoose");
+const { JWT_LIFE } = require("../config");
 
 
 const router = Router();

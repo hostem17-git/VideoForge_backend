@@ -9,6 +9,7 @@ const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 
 const mongoose = require("mongoose");
+const { JWT_LIFE } = require('../config');
 
 
 const router = Router();
